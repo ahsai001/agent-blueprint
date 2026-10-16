@@ -53,7 +53,7 @@ Sistem ini bekerja dengan prinsip **Hybrid (Script + AI Agent)**:
 cd ~/Documents/git  # atau folder kerja Anda
 
 # 2. Clone repository ini
-git clone <URL_REPO_ANDA> agent-blueprint
+git clone https://github.com/ahsai001/agent-blueprint.git agent-blueprint
 cd agent-blueprint
 
 # 3. Jalankan script installer global
@@ -69,7 +69,7 @@ chmod +x install.sh
 ```powershell
 # 1. Buka PowerShell dan clone repository
 cd C:\Users\<Username>\Documents\git
-git clone <URL_REPO_ANDA> agent-blueprint
+git clone https://github.com/ahsai001/agent-blueprint.git agent-blueprint
 cd agent-blueprint
 
 # 2. Daftarkan ke PATH Windows
@@ -131,7 +131,7 @@ Jika Anda sedang bekerja di VPS dan ingin memasang standar ke project web di ser
 
 ```bash
 # 1. Clone di VPS (misal di folder home)
-git clone <URL_REPO_ANDA> ~/agent-blueprint
+git clone https://github.com/ahsai001/agent-blueprint.git ~/agent-blueprint
 
 # 2. Jalankan langsung script-nya ke target folder project
 ~/agent-blueprint/agent-init.sh -p codeigniter -t /var/www/html/syshab-api
@@ -141,9 +141,22 @@ git clone <URL_REPO_ANDA> ~/agent-blueprint
 
 ## 🤖 Langkah Onboarding AI Agent (Krusial)
 
-Setelah `agent-init` selesai dijalankan di project Anda, buka IDE AI favorit Anda (**Antigravity, Cursor, Claude Code, Windsurf, OpenCode, Hermes**).
+Ada 2 cara praktis untuk menghubungkan standar ini dengan AI Agent Anda:
 
-Kirimkan pesan berikut pada chat pertama:
+### ⚡ Opsi 1: Cukup 1 Baris Prompt (Paling Praktis & Otomatis)
+Buka chat AI Agent Anda di project target, lalu cukup kirimkan:
+
+```markdown
+Tolong implementasikan repo blueprint ini ke project ini: https://github.com/ahsai001/agent-blueprint
+```
+
+> **Apa yang dilakukan Agent?**  
+> Agent akan langsung membaca dokumentasi repo `agent-blueprint`, mendeteksi framework project Anda, mengeksekusi inisialisasi (`AGENTS.md` + symlinks), lalu otomatis mengaudit struktur codebase dan mengisi registry. Anda tidak perlu repot membuka terminal!
+
+---
+
+### 📋 Opsi 2: Jika Anda Sudah Menjalankan `agent-init` di Terminal
+Jika sebelumnya Anda sudah menjalankan perintah `agent-init` sendiri di terminal, kirimkan prompt onboarding berikut pada chat pertama:
 
 ```markdown
 Halo! Project ini telah dipasangi standar arsitektur dan safety guardrails di file `AGENTS.md`.
