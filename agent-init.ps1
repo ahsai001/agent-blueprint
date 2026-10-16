@@ -102,19 +102,43 @@ if (-not (Test-Path $ProfileFile)) {
 
 $OutputFile = Join-Path $TargetDir "AGENTS.md"
 
+$SkipGenerate = $false
+
 if ((Test-Path $OutputFile) -and (-not $Force)) {
-    Write-Host "⚠️ File AGENTS.md sudah ada di: $OutputFile" -ForegroundColor Yellow
-    $confirm = Read-Host "Apakah ingin menimpa (overwrite)? [y/N]"
-    if ($confirm -notmatch "^[Yy]$") {
-        Write-Host "Operasi dibatalkan." -ForegroundColor Blue
-        exit 0
+    Write-Host "⚠️ Terdeteksi file AGENTS.md sudah ada di: $OutputFile" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Pilih tindakan yang diinginkan:" -ForegroundColor White
+    Write-Host "  1) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md lama apa adanya)" -ForegroundColor Green
+    Write-Host "  2) Backup AGENTS.md lama & Ganti dengan Blueprint baru" -ForegroundColor Cyan
+    Write-Host "  3) Batal" -ForegroundColor Red
+    Write-Host ""
+    $existingChoice = Read-Host "Masukkan pilihan [1-3] (default: 1)"
+    if ([string]::IsNullOrWhiteSpace($existingChoice)) { $existingChoice = "1" }
+
+    switch ($existingChoice) {
+        "1" {
+            Write-Host "ℹ️ Mempertahankan isi AGENTS.md yang sudah ada..." -ForegroundColor Blue
+            $SkipGenerate = $true
+        }
+        "2" {
+            $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+            $backupFile = "$OutputFile.bak.$timestamp"
+            Copy-Item -Path $OutputFile -Destination $backupFile -Force
+            Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+            $SkipGenerate = $false
+        }
+        Default {
+            Write-Host "Operasi dibatalkan." -ForegroundColor Blue
+            exit 0
+        }
     }
 }
 
-Write-Host "🚀 Men-generate AGENTS.md untuk project: $ProjectName (Stack: $ProfileName)..." -ForegroundColor Cyan
+if (-not $SkipGenerate) {
+    Write-Host "🚀 Men-generate AGENTS.md untuk project: $ProjectName (Stack: $ProfileName)..." -ForegroundColor Cyan
 
-# 1. Header Dokumen
-$Header = @"
+    # 1. Header Dokumen
+    $Header = @"
 # AGENTS.md - Standar Baku Pengembangan AI Agent
 
 > **Project**: $ProjectName  
@@ -128,27 +152,28 @@ Dokumen ini memuat standar baku arsitektur, safety guardrails, dan protokol kerj
 
 "@
 
-[System.IO.File]::WriteAllText($OutputFile, $Header, [System.Text.Encoding]::UTF8)
+    [System.IO.File]::WriteAllText($OutputFile, $Header, [System.Text.Encoding]::UTF8)
 
-# 2. Append Core Templates (01 sampai 05)
-$CoreFiles = Get-ChildItem -Path (Join-Path $BlueprintDir "templates\core") -Filter "[0-5]*.md" | Sort-Object Name
-foreach ($cf in $CoreFiles) {
-    $content = [System.IO.File]::ReadAllText($cf.FullName, [System.Text.Encoding]::UTF8)
-    [System.IO.File]::AppendAllText($OutputFile, "`n" + $content + "`n`n---`n", [System.Text.Encoding]::UTF8)
+    # 2. Append Core Templates (01 sampai 05)
+    $CoreFiles = Get-ChildItem -Path (Join-Path $BlueprintDir "templates\core") -Filter "[0-5]*.md" | Sort-Object Name
+    foreach ($cf in $CoreFiles) {
+        $content = [System.IO.File]::ReadAllText($cf.FullName, [System.Text.Encoding]::UTF8)
+        [System.IO.File]::AppendAllText($OutputFile, "`n" + $content + "`n`n---`n", [System.Text.Encoding]::UTF8)
+    }
+
+    # 3. Append Profile Template
+    $ProfileContent = [System.IO.File]::ReadAllText($ProfileFile, [System.Text.Encoding]::UTF8)
+    [System.IO.File]::AppendAllText($OutputFile, "`n" + $ProfileContent + "`n`n---`n", [System.Text.Encoding]::UTF8)
+
+    # 4. Append Project-Specific Knowledge Registry (06)
+    $ProjectKnowledgeFile = Join-Path $BlueprintDir "templates\core\06-project-knowledge.md"
+    if (Test-Path $ProjectKnowledgeFile) {
+        $KnowledgeContent = [System.IO.File]::ReadAllText($ProjectKnowledgeFile, [System.Text.Encoding]::UTF8)
+        [System.IO.File]::AppendAllText($OutputFile, "`n" + $KnowledgeContent + "`n", [System.Text.Encoding]::UTF8)
+    }
+
+    Write-Host "✓ File AGENTS.md berhasil dibuat di: $OutputFile" -ForegroundColor Green
 }
-
-# 3. Append Profile Template
-$ProfileContent = [System.IO.File]::ReadAllText($ProfileFile, [System.Text.Encoding]::UTF8)
-[System.IO.File]::AppendAllText($OutputFile, "`n" + $ProfileContent + "`n`n---`n", [System.Text.Encoding]::UTF8)
-
-# 4. Append Project-Specific Knowledge Registry (06)
-$ProjectKnowledgeFile = Join-Path $BlueprintDir "templates\core\06-project-knowledge.md"
-if (Test-Path $ProjectKnowledgeFile) {
-    $KnowledgeContent = [System.IO.File]::ReadAllText($ProjectKnowledgeFile, [System.Text.Encoding]::UTF8)
-    [System.IO.File]::AppendAllText($OutputFile, "`n" + $KnowledgeContent + "`n", [System.Text.Encoding]::UTF8)
-}
-
-Write-Host "✓ File AGENTS.md berhasil dibuat di: $OutputFile" -ForegroundColor Green
 
 # 5. Buat Symlink / Copy untuk AI Agent
 function Link-Or-Copy {

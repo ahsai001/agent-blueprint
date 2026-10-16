@@ -145,18 +145,41 @@ fi
 OUTPUT_FILE="$TARGET_DIR/AGENTS.md"
 
 if [ -f "$OUTPUT_FILE" ] && [ "$FORCE" = false ]; then
-  echo -e "${YELLOW}⚠️  File AGENTS.md sudah ada di: $OUTPUT_FILE${NC}"
-  read -rp "Apakah ingin menimpa (overwrite)? [y/N]: " confirm
-  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo -e "${BLUE}Operasi dibatalkan.${NC}"
-    exit 0
-  fi
+  echo -e "${YELLOW}⚠️  Terdeteksi file AGENTS.md sudah ada di: $OUTPUT_FILE${NC}"
+  echo ""
+  echo "Pilih tindakan yang diinginkan:"
+  echo "  1) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md lama apa adanya)"
+  echo "  2) Backup AGENTS.md lama & Ganti dengan Blueprint baru"
+  echo "  3) Batal"
+  echo ""
+  read -rp "Masukkan pilihan [1-3] (default: 1): " existing_choice
+  existing_choice="${existing_choice:-1}"
+
+  case $existing_choice in
+    1)
+      echo -e "${BLUE}ℹ️  Mempertahankan isi AGENTS.md yang sudah ada...${NC}"
+      SKIP_GENERATE_AGENTS=true
+      ;;
+    2)
+      BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+      cp "$OUTPUT_FILE" "$BACKUP_FILE"
+      echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+      SKIP_GENERATE_AGENTS=false
+      ;;
+    *)
+      echo -e "${BLUE}Operasi dibatalkan.${NC}"
+      exit 0
+      ;;
+  esac
+else
+  SKIP_GENERATE_AGENTS=false
 fi
 
-echo -e "${BLUE}🚀 Men-generate AGENTS.md untuk project: ${BOLD}${PROJECT_NAME}${NC} (Stack: ${PROFILE})..."
+if [ "$SKIP_GENERATE_AGENTS" = false ]; then
+  echo -e "${BLUE}🚀 Men-generate AGENTS.md untuk project: ${BOLD}${PROJECT_NAME}${NC} (Stack: ${PROFILE})..."
 
-# 1. Tulis Header Dokumen
-cat <<EOF > "$OUTPUT_FILE"
+  # 1. Tulis Header Dokumen
+  cat <<EOF > "$OUTPUT_FILE"
 # AGENTS.md - Standar Baku Pengembangan AI Agent
 
 > **Project**: ${PROJECT_NAME}  
@@ -169,30 +192,31 @@ Dokumen ini memuat standar baku arsitektur, safety guardrails, dan protokol kerj
 ---
 EOF
 
-# 2. Append Core Templates (01 to 05)
-for core_file in "$BLUEPRINT_DIR"/templates/core/[0-5]*.md; do
-  if [ -f "$core_file" ]; then
+  # 2. Append Core Templates (01 to 05)
+  for core_file in "$BLUEPRINT_DIR"/templates/core/[0-5]*.md; do
+    if [ -f "$core_file" ]; then
+      echo "" >> "$OUTPUT_FILE"
+      cat "$core_file" >> "$OUTPUT_FILE"
+      echo "" >> "$OUTPUT_FILE"
+      echo "---" >> "$OUTPUT_FILE"
+    fi
+  done
+
+  # 3. Append Profile Template
+  echo "" >> "$OUTPUT_FILE"
+  cat "$PROFILE_FILE" >> "$OUTPUT_FILE"
+  echo "" >> "$OUTPUT_FILE"
+  echo "---" >> "$OUTPUT_FILE"
+
+  # 4. Append Project-Specific Knowledge Registry (untuk diisi Agent saat onboarding)
+  if [ -f "$BLUEPRINT_DIR/templates/core/06-project-knowledge.md" ]; then
     echo "" >> "$OUTPUT_FILE"
-    cat "$core_file" >> "$OUTPUT_FILE"
+    cat "$BLUEPRINT_DIR/templates/core/06-project-knowledge.md" >> "$OUTPUT_FILE"
     echo "" >> "$OUTPUT_FILE"
-    echo "---" >> "$OUTPUT_FILE"
   fi
-done
 
-# 3. Append Profile Template
-echo "" >> "$OUTPUT_FILE"
-cat "$PROFILE_FILE" >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-echo "---" >> "$OUTPUT_FILE"
-
-# 4. Append Project-Specific Knowledge Registry (untuk diisi Agent saat onboarding)
-if [ -f "$BLUEPRINT_DIR/templates/core/06-project-knowledge.md" ]; then
-  echo "" >> "$OUTPUT_FILE"
-  cat "$BLUEPRINT_DIR/templates/core/06-project-knowledge.md" >> "$OUTPUT_FILE"
-  echo "" >> "$OUTPUT_FILE"
+  echo -e "${GREEN}✓ File AGENTS.md berhasil dibuat di: ${OUTPUT_FILE}${NC}"
 fi
-
-echo -e "${GREEN}✓ File AGENTS.md berhasil dibuat di: ${OUTPUT_FILE}${NC}"
 
 # 4. Buat Symlink untuk Berbagai AI Agent
 create_symlink() {
