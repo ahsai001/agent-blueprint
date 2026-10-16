@@ -199,8 +199,13 @@ create_symlink() {
   local link_name="$1"
   local target="AGENTS.md"
   rm -f "$TARGET_DIR/$link_name"
-  ln -s "$target" "$TARGET_DIR/$link_name"
-  echo -e "${GREEN}✓ Symlink dibuat: ${link_name} -> AGENTS.md${NC}"
+  if ln -s "$target" "$TARGET_DIR/$link_name" 2>/dev/null; then
+    echo -e "${GREEN}✓ Symlink dibuat: ${link_name} -> AGENTS.md${NC}"
+  else
+    # Fallback jika berjalan di Windows Git Bash tanpa hak symlink / CIFS mount
+    cp "$TARGET_DIR/$target" "$TARGET_DIR/$link_name"
+    echo -e "${YELLOW}✓ File disalin (fallback non-symlink): ${link_name}${NC}"
+  fi
 }
 
 create_symlink "CLAUDE.md"
