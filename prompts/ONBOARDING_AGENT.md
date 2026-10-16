@@ -1,19 +1,22 @@
 # ONBOARDING AGENT PROMPT (PANDUAN MEMULAI PROJECT)
 
-Gunakan prompt ini saat pertama kali membuka project baru atau project legacy bersama AI Agent (Antigravity, Cursor, Claude Code, Windsurf, Hermes, OpenCode, dll.).
+Kirimkan prompt di bawah ini ke AI Agent (Antigravity, Cursor, Claude Code, Windsurf, OpenCode, Hermes, dll.) saat pertama kali membuka project yang baru dipasangi `agent-init`.
 
 ---
 
-### Teks Prompt untuk Dikirim ke AI Agent:
+### 📋 Copy-Paste Prompt Berikut ke Chat AI Agent:
 
 ```markdown
-Halo! Project ini telah dipasangi standar baku di file `AGENTS.md`.
+Halo! Project ini telah dipasangi standar arsitektur dan safety guardrails di file `AGENTS.md`.
 
-Tolong lakukan langkah onboarding berikut sebelum kita mulai menulis kode:
-1. Baca dan pahami seluruh isi `AGENTS.md` (termasuk Core Safety, SOP Inspect First, Scope Lock, dan Profil Arsitektur).
-2. Lakukan audit cepat terhadap struktur repository ini:
-   - Identifikasi file konfigurasi utama, routing table, dan dependency injection / service container.
-   - Jika ini project existing/legacy, cari tahu apakah ada file-file monolitik besar (di atas 1.000 baris) dan catat di daftar zona bahaya.
-   - Identifikasi skema database utama, tabel auth/user, dan peran role akses yang berlaku.
-3. Berikan ringkasan singkat hasil auditmu dan konfirmasi bahwa kamu siap mematuhi seluruh guardrails di `AGENTS.md` (termasuk Zero-Dummy Policy, larangan mutasi DB langsung, dan SOP inspect definition first).
+Tolong lakukan proses ONBOARDING awal sekarang:
+1. Baca dan pahami seluruh isi `AGENTS.md` (termasuk Core Safety, Zero-Dummy Policy, Scope Lock, SOP Inspect First, dan Profil Arsitektur).
+2. Lakukan audit struktur codebase pada repository ini:
+   - Identifikasi file routing utama, dependency injection/service provider, dan file konfigurasi.
+   - Scan codebase untuk menemukan file monolitik besar (> 1.000 baris) atau modul warisan yang rentan rusak.
+   - Identifikasi helper, library, dan base model/service reusable yang sudah tersedia di codebase.
+   - Cek skema database utama, tabel otentikasi/user, serta sistem role/permission yang dipakai.
+3. **UPDATE FILE `AGENTS.md`**:
+   - Buka file `AGENTS.md` dan isi bagian `# PROJECT-SPECIFIC KNOWLEDGE & REGISTRY` dengan data nyata hasil auditmu di atas.
+4. Laporkan ringkasan hasil auditmu kepadaku dan konfirmasikan kesiapanmu mematuhi seluruh aturan kerja ini.
 ```

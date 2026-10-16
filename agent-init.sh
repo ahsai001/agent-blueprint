@@ -169,8 +169,8 @@ Dokumen ini memuat standar baku arsitektur, safety guardrails, dan protokol kerj
 ---
 EOF
 
-# 2. Append Core Templates
-for core_file in "$BLUEPRINT_DIR"/templates/core/*.md; do
+# 2. Append Core Templates (01 to 05)
+for core_file in "$BLUEPRINT_DIR"/templates/core/[0-5]*.md; do
   if [ -f "$core_file" ]; then
     echo "" >> "$OUTPUT_FILE"
     cat "$core_file" >> "$OUTPUT_FILE"
@@ -183,6 +183,14 @@ done
 echo "" >> "$OUTPUT_FILE"
 cat "$PROFILE_FILE" >> "$OUTPUT_FILE"
 echo "" >> "$OUTPUT_FILE"
+echo "---" >> "$OUTPUT_FILE"
+
+# 4. Append Project-Specific Knowledge Registry (untuk diisi Agent saat onboarding)
+if [ -f "$BLUEPRINT_DIR/templates/core/06-project-knowledge.md" ]; then
+  echo "" >> "$OUTPUT_FILE"
+  cat "$BLUEPRINT_DIR/templates/core/06-project-knowledge.md" >> "$OUTPUT_FILE"
+  echo "" >> "$OUTPUT_FILE"
+fi
 
 echo -e "${GREEN}✓ File AGENTS.md berhasil dibuat di: ${OUTPUT_FILE}${NC}"
 
