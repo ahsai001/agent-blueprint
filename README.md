@@ -1,136 +1,208 @@
-# 🛡️ Agent-Blueprint: Universal AI Coding Standards & Guardrails
+# 🛡️ Panduan Penggunaan: Agent-Blueprint
 
-Repository ini adalah standar baku arsitektur, safety guardrails, dan quality gates universal untuk seluruh AI Coding Agent (**Antigravity, Cursor, Claude Code, Windsurf, OpenCode, Hermes**, dll.).
+Standar baku arsitektur, safety guardrails, dan quality gates universal untuk seluruh AI Coding Agent (**Antigravity, Cursor, Claude Code, Windsurf, OpenCode, Hermes**, dll.).
 
-Support multi-platform: **macOS, Linux (Ubuntu/Debian/CentOS/Alpine), dan Windows (PowerShell / CMD / Git Bash)**.
-
-Standar ini disarikan dari pengalaman nyata di codebase enterprise berskala besar (seperti `web-syshab` dan `syshab-api v2`) untuk mencegah penyakit alami AI:
-1. **Halusinasi Dummy Data**: Mencegah AI membuat data palsu saat error/kosong (*Zero-Dummy Policy*).
-2. **Over-Refactoring**: Menjaga integritas file lain dan melarang perombakan di luar scope (*Scope Lock*).
-3. **Catastrophic Database Mutation**: Melarang eksekusi query mutasi langsung ke database (*Read-Only DB Default*).
-4. **Halusinasi Parameter**: Mewajibkan AI membaca file definisi helper sebelum berasumsi signature (*SOP Inspect First*).
-5. **Git Merge Conflict**: Mencegah pengacakan urutan file sentral seperti route table, DI container, dan i18n (*Hotspot Protocol*).
+Support multi-platform: **macOS, Linux (Ubuntu/Debian/CentOS/Alpine), dan Windows (PowerShell / CMD)**.
 
 ---
 
-## 🚀 Instalasi & Setup per Sistem Operasi
+## 📌 Daftar Isi
+1. [Konsep & Filosofi](#-konsep--filosofi)
+2. [Instalasi Awal (Cukup Sekali)](#-instalasi-awal-cukup-sekali)
+3. [Alur Penggunaan Praktis](#-alur-penggunaan-praktis)
+   - [Skenario A: Project Baru (Fresh Project)](#skenario-a-project-baru-fresh-project)
+   - [Skenario B: Project Lama / Existing](#skenario-b-project-lama--existing)
+   - [Skenario C: Di Server VPS Linux via SSH](#skenario-c-di-server-vps-linux-via-ssh)
+4. [Langkah Onboarding AI Agent (Krusial)](#-langkah-onboarding-ai-agent-krusial)
+5. [Daftar Profil Teknologi yang Didukung](#-daftar-profil-teknologi-yang-didukung)
+6. [Fitur Keselamatan yang Otomatis Aktif](#-fitur-keselamatan-yang-otomatis-aktif)
+7. [FAQ & Troubleshooting](#-faq--troubleshooting)
+
+---
+
+## 🧠 Konsep & Filosofi
+
+Sistem ini bekerja dengan prinsip **Hybrid (Script + AI Agent)**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. SCRIPT CLI (`agent-init`) - Cepat & Deterministik            │
+│    - Men-generate AGENTS.md berisi aturan core safety           │
+│    - Membuat symlink: CLAUDE.md, .cursorrules, .windsurfrules   │
+│    - Memasang Git pre-commit hook validator                     │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ 2. AI AGENT (Antigravity / Cursor / Claude) - Cerdas & Adaptif  │
+│    - Mengaudit struktur folder & file monolitik (> 1.000 baris) │
+│    - Mengidentifikasi routing, auth, dan helper bawaan          │
+│    - MENGUPDATE bagian Registry di AGENTS.md                    │
+│    - Menjaga kepatuhan aturan saat menulis kode                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Instalasi Awal (Cukup Sekali)
 
 ### 🍎 macOS & 🐧 Linux
 
 ```bash
-# 1. Clone repository ini ke mana saja
+# 1. Masuk ke folder git Anda
+cd ~/Documents/git  # atau folder kerja Anda
+
+# 2. Clone repository ini
 git clone <URL_REPO_ANDA> agent-blueprint
 cd agent-blueprint
 
-# 2. Pasang secara global ke ~/.local/bin/agent-init
+# 3. Jalankan script installer global
 chmod +x install.sh
 ./install.sh
 ```
-
-Setelah instalasi, perintah `agent-init` bisa langsung dipanggil dari direktori mana pun di terminal Anda.
+> Perintah `agent-init` sekarang langsung aktif secara global di terminal Anda (`~/.local/bin/agent-init`).
 
 ---
 
-### 🪟 Windows (PowerShell / CMD)
+### 🪟 Windows (PowerShell / Command Prompt)
 
 ```powershell
-# 1. Clone repository ini
+# 1. Buka PowerShell dan clone repository
+cd C:\Users\<Username>\Documents\git
 git clone <URL_REPO_ANDA> agent-blueprint
 cd agent-blueprint
 
-# 2. Daftarkan ke User PATH Windows
+# 2. Daftarkan ke PATH Windows
 .\install.ps1
 ```
-*Catatan: Buka jendela PowerShell atau Terminal baru setelah menjalankan `install.ps1` agar PATH aktif.*
-
-Sekarang perintah `agent-init` (atau `agent-init.cmd`) bisa langsung dipanggil dari folder mana pun di Windows!
+> Tutup dan buka kembali jendela PowerShell / Terminal baru. Perintah `agent-init` sudah aktif secara global.
 
 ---
 
-## 🛠️ Cara Menginisialisasi Project Baru / Existing
+## 🛠️ Alur Penggunaan Praktis
 
-Masuk ke folder project Anda di terminal, lalu jalankan:
+### Skenario A: Project Baru (Fresh Project)
 
-### Di macOS / Linux:
+Jika Anda baru saja membuat project baru:
+
 ```bash
-cd /path/to/my-project
+# 1. Buat folder dan inisialisasi git
+mkdir my-new-app && cd my-new-app
+git init
+
+# 2. Jalankan agent-init
 agent-init
 
-# Atau tentukan langsung profilnya:
-agent-init -p flutter
-agent-init -p laravel
-agent-init -p codeigniter
-agent-init -p dotnet
-agent-init -p nodejs
+# Script otomatis mendeteksi stack, atau Anda bisa tentukan langsung:
+agent-init -p flutter      # untuk Flutter
+agent-init -p laravel      # untuk Laravel
+agent-init -p codeigniter  # untuk CodeIgniter
+agent-init -p dotnet       # untuk .NET / C#
+agent-init -p nodejs       # untuk Node.js / NestJS / Express
 ```
 
-### Di Windows (PowerShell / CMD):
-```powershell
-cd C:\path\to\my-project
-agent-init
-
-# Atau tentukan langsung profilnya:
-agent-init -Profile flutter
-agent-init -Profile dotnet
-agent-init -Profile laravel
-```
-
-Script akan otomatis:
-1. **Auto-Detect Stack**: Mendeteksi otomatis teknologi project Anda.
-2. **Generate `AGENTS.md`**: Menggabungkan Core Safety + Profil Arsitektur + Registry Onboarding.
-3. **Symlink / Cross-platform Copy**:
-   - `CLAUDE.md` -> `AGENTS.md`
-   - `.cursorrules` -> `AGENTS.md`
-   - `.windsurfrules` -> `AGENTS.md`
-4. **Pasang Git Pre-commit Hook**: Mencegah credential/secret ter-commit ke git.
+Hasil yang otomatis terbentuk di project Anda:
+* `AGENTS.md` (Pondasi aturan arsitektur & safety)
+* `CLAUDE.md` -> link ke `AGENTS.md`
+* `.cursorrules` -> link ke `AGENTS.md`
+* `.windsurfrules` -> link ke `AGENTS.md`
+* `.git/hooks/pre-commit` (Mencegah `.env`, key rahasia, atau debug `dd()` ter-commit)
 
 ---
 
-## 🤖 Langkah Onboarding Bersama AI Agent
+### Skenario B: Project Lama / Existing
 
-Setelah `AGENTS.md` terbentuk di project Anda, buka IDE AI (Antigravity / Cursor / Claude) dan kirimkan prompt onboarding dari [`prompts/ONBOARDING_AGENT.md`](file:///Users/shabudin/Documents/git/agent-blueprint/prompts/ONBOARDING_AGENT.md):
+Jika Anda ingin menerapkan standar ini ke project yang kodenya sudah berjalan lama:
+
+```bash
+# 1. Masuk ke folder project lama
+cd /path/to/project-lama
+
+# 2. Jalankan agent-init
+agent-init
+```
+Lalu lanjutkan ke tahap [Onboarding AI Agent](#-langkah-onboarding-ai-agent-krusial) di bawah agar Agent memetakan controller besar dan helper lama yang ada di project tersebut.
+
+---
+
+### Skenario C: Di Server VPS Linux via SSH
+
+Jika Anda sedang bekerja di VPS dan ingin memasang standar ke project web di server:
+
+```bash
+# 1. Clone di VPS (misal di folder home)
+git clone <URL_REPO_ANDA> ~/agent-blueprint
+
+# 2. Jalankan langsung script-nya ke target folder project
+~/agent-blueprint/agent-init.sh -p codeigniter -t /var/www/html/syshab-api
+```
+
+---
+
+## 🤖 Langkah Onboarding AI Agent (Krusial)
+
+Setelah `agent-init` selesai dijalankan di project Anda, buka IDE AI favorit Anda (**Antigravity, Cursor, Claude Code, Windsurf, OpenCode, Hermes**).
+
+Kirimkan pesan berikut pada chat pertama:
 
 ```markdown
-Halo! Project ini telah dipasangi standar di file `AGENTS.md`.
+Halo! Project ini telah dipasangi standar arsitektur dan safety guardrails di file `AGENTS.md`.
 
-Tolong lakukan audit struktur codebase repository ini:
-1. Identifikasi file routing utama, dependency injection/service provider, dan file konfigurasi.
-2. Scan codebase untuk menemukan file monolitik besar (> 1.000 baris) atau modul warisan yang rentan rusak.
-3. Identifikasi helper, library, dan base model/service reusable yang sudah tersedia di codebase.
-4. Cek skema database utama, tabel otentikasi/user, serta sistem role/permission yang dipakai.
-5. UPDATE BAGIAN `# PROJECT-SPECIFIC KNOWLEDGE & REGISTRY` di file `AGENTS.md` dengan fakta hasil auditmu di atas.
+Tolong lakukan proses ONBOARDING awal sekarang:
+1. Baca dan pahami seluruh isi `AGENTS.md` (Core Safety, Zero-Dummy Policy, Scope Lock, SOP Inspect First, dan Profil Arsitektur).
+2. Lakukan audit struktur codebase pada repository ini:
+   - Identifikasi file routing utama, dependency injection/service provider, dan file konfigurasi.
+   - Scan codebase untuk menemukan file monolitik besar (> 1.000 baris) atau modul warisan yang rentan rusak.
+   - Identifikasi helper, library, dan base model/service reusable yang sudah tersedia di codebase.
+   - Cek skema database utama, tabel otentikasi/user, serta sistem role/permission yang dipakai.
+3. UPDATE BAGIAN `# PROJECT-SPECIFIC KNOWLEDGE & REGISTRY` di file `AGENTS.md` dengan fakta hasil auditmu di atas.
+4. Laporkan ringkasan hasil auditmu kepadaku dan konfirmasikan kesiapanmu mematuhi seluruh aturan kerja ini.
 ```
+
+### Mengapa Langkah Ini Sangat Penting?
+Agent akan mengisi bagian paling bawah file `AGENTS.md` dengan fakta riil project Anda. Setelah Anda melakukan `git commit`:
+```bash
+git add AGENTS.md
+git commit -m "chore: complete agent onboarding and register project knowledge"
+```
+**Seluruh agent di masa depan** (baik Anda membuka Cursor, Claude, Antigravity, atau rekan tim Anda) akan langsung mewarisi pemahaman mendalam tentang seluk-beluk project Anda tanpa perlu re-indexing berulang-ulang!
 
 ---
 
-## 📁 Struktur Repository
+## 📦 Daftar Profil Teknologi yang Didukung
 
-```
-agent-blueprint/
-├── 🚀 agent-init.sh              # CLI engine untuk macOS & Linux
-├── 🚀 agent-init.ps1             # CLI engine untuk Windows PowerShell
-├── 🚀 agent-init.cmd             # CLI wrapper untuk Windows CMD
-├── 🔧 install.sh                 # Installer global untuk macOS & Linux
-├── 🔧 install.ps1                # Installer global untuk Windows
-├── 📄 .gitattributes             # Normalisasi baris akhir LF/CRLF
-├── 📁 prompts/
-│   └── 📄 ONBOARDING_AGENT.md    # Template prompt onboarding untuk AI
-├── 📁 templates/
-│   ├── 📁 core/                  # Standar Universal (Berlaku untuk semua bahasa)
-│   │   ├── 01-safety-first.md
-│   │   ├── 02-sop-inspection.md
-│   │   ├── 03-scope-lock.md
-│   │   ├── 04-constants-standards.md
-│   │   ├── 05-git-workflow.md
-│   │   └── 06-project-knowledge.md
-│   ├── 📁 hooks/
-│   │   └── pre-commit            # Git pre-commit hook validator
-│   └── 📁 profiles/              # Standar Khusus per Teknologi
-│       ├── flutter.md
-│       ├── codeigniter.md
-│       ├── laravel.md
-│       ├── dotnet.md
-│       ├── nodejs.md
-│       └── general.md
-└── 📄 README.md
-```
+| Profil | Flag | Cakupan Standar |
+|---|---|---|
+| **Flutter & Dart** | `-p flutter` | Clean Architecture (Presentation, Domain, Data), Cubit/Bloc, Screen matrix responsive (360px), i18n JSON parity. |
+| **CodeIgniter** | `-p codeigniter` | REST API vs CMS, Safe Query (Prepared statements), ACID transaction wrapper, SP-Ready query, RBAC lifecycle checklist, Filter user-scope ('ALL'). |
+| **Laravel** | `-p laravel` | Service/Action separation, FormRequest validation wajib, JsonResource DTO, Migration safety (`down()` method), No N+1 query. |
+| **.NET & C#** | `-p dotnet` | Clean Architecture (Domain, App, Infra, WebApi), DTO isolation, EF Core `.AsNoTracking()`, Async CancellationToken. |
+| **Node.js & TS** | `-p nodejs` | TypeScript strict (No `any`), Zod schema validation, Prisma/TypeORM transaction, Controller-Service separation. |
+| **General** | `-p general` | Prinsip universal SOLID, Clean Code, Parameterized queries, Fail Fast. |
+
+---
+
+## 🛡️ Fitur Keselamatan yang Otomatis Aktif
+
+1. **Read-Only Database by Default**: Agent dilarang mengeksekusi query `INSERT`/`UPDATE`/`DELETE`/`ALTER`/`DROP` langsung ke database. Agent wajib membuatkan script SQL agar dieksekusi atau diverifikasi oleh user.
+2. **Strict Zero-Dummy Policy**: Agent dilarang keras membuat array data palsu saat pemanggilan API kosong atau gagal. Wajib menampilkan Empty State atau melempar Exception.
+3. **SOP Inspect Definition First**: Agent dilarang berasumsi nama parameter helper; wajib membaca file definisi helper (`view_file`) sebelum menulis kode pemanggilannya.
+4. **Scope Lock**: Dilarang me-reformat seluruh repo atau mengubah file di luar tiket yang ditugaskan.
+5. **Git Pre-commit Hook**: Otomatis menggagalkan commit jika ada file `.env`, private key SSH, atau fungsi debug tertinggal (`dd()`, `debugger;`).
+
+---
+
+## ❓ FAQ & Troubleshooting
+
+#### 1. Bagaimana jika saya ingin menambah profil framework baru (misal: Python FastAPI / Go)?
+Cukup tambahkan file markdown baru di `templates/profiles/<nama-stack>.md` pada repo `agent-blueprint`. Script otomatis bisa mengenali opsi baru tersebut.
+
+#### 2. Di Windows muncul pesan "Symbolic link creation failed"?
+Tidak masalah! Script sudah dilengkapi fitur **auto-fallback**: jika akun Windows Anda belum mengaktifkan *Developer Mode*, script otomatis menyalin file `AGENTS.md` ke `CLAUDE.md`, `.cursorrules`, dan `.windsurfrules`.
+
+#### 3. Perintah `agent-init` tidak ditemukan setelah instalasi?
+* **Di macOS/Linux**: Pastikan baris ini ada di file `~/.zshrc` atau `~/.bashrc`:
+  ```bash
+  export PATH="$HOME/.local/bin:$PATH"
+  ```
+* **Di Windows**: Tutup dan buka kembali jendela PowerShell atau Command Prompt baru agar environment variable PATH di-refresh.
