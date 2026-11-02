@@ -4,14 +4,32 @@ Panduan arsitektur dan kualitas kode untuk project CodeIgniter (CI3 / CI4).
 
 ---
 
-### 1. Pola Operasi Write (ACID Transactions)
-- Setiap operasi yang melibatkan beberapa query mutasi (multi-write `INSERT`/`UPDATE`/`DELETE`) **WAJIB** dibungkus dalam database transaction.
+### 1. Arsitektur Layered (Thin Controller & Service/Model Separation)
+Meskipun CodeIgniter secara default adalah MVC sederhana, seluruh kode baru atau refactoring **WAJIB** menerapkan pemisahan 3 layer untuk mencegah controller monolitik:
+
+```
+application/ (CI3) atau app/ (CI4)
+├── controllers/   # Thin Controller: routing, parse HTTP input, panggil Service, return JSON
+├── services/      # Service Layer: business logic, orkestrasi transaksi, kalkulasi
+├── models/        # Data Access: query SQL murni, prepared statements, SP-calls
+└── libraries/     # Reusable adapters, third-party clients, helper wrappers
+```
+
+- **Aturan Batasan Layer**:
+  - **Controller**: Bertugas murni sebagai interface HTTP. **DILARANG** menulis raw SQL query, kalkulasi matematika kompleks, atau manipulasi data multi-tabel langsung di Controller.
+  - **Service**: Tempat seluruh business logic berada. Service menerima data murni (array/object), memvalidasi aturan bisnis, dan memanggil satu atau lebih Model di dalam transaksi.
+  - **Model**: Hanya bertugas mengeksekusi query database dan mengembalikan data mentah. **DILARANG** mengakses variabel global HTTP seperti `$_POST`, `$_GET`, atau `$this->input` langsung di dalam Model.
+
+---
+
+### 2. Pola Operasi Write (ACID Transactions)
+- Setiap operasi yang melibatkan beberapa query mutasi (multi-write `INSERT`/`UPDATE`/`DELETE`) **WAJIB** dibungkus dalam database transaction di Service layer.
 - Gunakan transaction wrapper yang disediakan framework atau helper (contoh: `process_data_with_transaction` / `process_json_with_transaction` jika ada).
 - **Hindari Pitfall Commit**: Pada MySQL/CI, statement `COMMIT;` mereset counter affected rows menjadi `0`. Jangan mengecek status eksekusi menggunakan affected rows setelah commit dijalankan.
 
 ---
 
-### 2. Standarisasi Query & Prepared Statements
+### 3. Standarisasi Query & Prepared Statements
 - Dilarang keras menggabungkan variabel input user langsung ke dalam string SQL (*string concatenation*). Wajib menggunakan query binding / prepared statement:
   ```php
   $this->db->query("SELECT * FROM users WHERE status = ? AND region_id = ?", [$status, $regionId]);
@@ -23,7 +41,7 @@ Panduan arsitektur dan kualitas kode untuk project CodeIgniter (CI3 / CI4).
 
 ---
 
-### 3. Multi-Tenancy & Row-Level Security (Filter 'ALL')
+### 4. Multi-Tenancy & Row-Level Security (Filter 'ALL')
 - **Arti Filter 'ALL'**: Di sisi user/klien, pilihan "All" atau parameter kosong **BUKAN** berarti mengambil seluruh data database tanpa filter.
 - Backend wajib membatasi query berdasarkan identitas user (`kduser`, company ID, atau site yang terdaftar di database user).
 - **Multi-Code Parsing**: Dukung filter dengan nilai koma (contoh: `"site": "SITE_A,SITE_B"`) dan sanitasi menggunakan klausa `IN (?, ?, ...)`.
@@ -31,7 +49,7 @@ Panduan arsitektur dan kualitas kode untuk project CodeIgniter (CI3 / CI4).
 
 ---
 
-### 4. Checklist Pendaftaran Endpoint Baru (RBAC Lifecycle)
+### 5. Checklist Pendaftaran Endpoint Baru (RBAC Lifecycle)
 Setelah membuat fungsi API baru, pastikan alur akses terdaftar lengkap:
 ```
 Buat endpoint API di Controller
@@ -49,7 +67,7 @@ Buat endpoint API di Controller
 
 ---
 
-### 5. Verification Commands (Quality Gate)
+### 6. Verification Commands (Quality Gate)
 ```bash
 # Validasi syntax PHP untuk semua file yang diubah
 php -l path/to/changed_file.php

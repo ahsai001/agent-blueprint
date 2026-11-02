@@ -103,13 +103,13 @@ Sistem ini dirancang dengan prinsip **Hybrid (Script + AI Agent)**:
 | Profil | Flag | Cakupan Standar |
 |---|---|---|
 | **Flutter & Dart** | `-p flutter` | Clean Architecture (Presentation, Domain, Data), Cubit/Bloc, Screen matrix responsive (360px), i18n JSON parity. |
-| **CodeIgniter** | `-p codeigniter` | REST API vs CMS, Safe Query (Prepared statements), ACID transaction wrapper, SP-Ready query, RBAC lifecycle checklist, Filter user-scope ('ALL'). |
+| **CodeIgniter** | `-p codeigniter` | Layered Architecture (Thin Controller, Service, Model), Safe Query (Prepared statements), ACID transaction wrapper, SP-Ready query, RBAC lifecycle checklist, Filter user-scope ('ALL'). |
 | **Laravel** | `-p laravel` | Service/Action separation, FormRequest validation wajib, JsonResource DTO, Migration safety (`down()` method), No N+1 query. |
 | **.NET & C#** | `-p dotnet` | Clean Architecture (Domain, App, Infra, WebApi), DTO isolation, EF Core `.AsNoTracking()`, Async CancellationToken. |
-| **Node.js & TS** | `-p nodejs` | TypeScript strict (No `any`), Zod schema validation, Prisma/TypeORM transaction, Controller-Service separation. |
-| **Python** | `-p python` | Type hints strict, Pydantic/DRF validation, SQLAlchemy/Django ACID transaction, Async event-loop non-blocking rules, Ruff/Mypy gates. |
+| **Node.js & TS** | `-p nodejs` | Clean Architecture 4-Layer (Domain, Application, Infrastructure, Presentation), TypeScript strict (No `any`), Zod schema validation, Prisma/TypeORM transaction. |
+| **Python** | `-p python` | Clean Architecture (Routers, Schemas/DTO, Services, Repositories, Models), Type hints strict, Pydantic validation, ACID transactions, Ruff/Mypy gates. |
 | **Go / Golang** | `-p go` | Standard Go layout (`cmd/`, `internal/`), Explicit error handling (`%w`), `ctx context.Context` propagation, `defer tx.Rollback()`, Goroutine lifecycle & Race detector. |
-| **General** | `-p general` | Prinsip universal SOLID, Clean Code, Parameterized queries, Fail Fast. |
+| **General** | `-p general` | Universal Clean Architecture (Dependency Rule, Entities, Use Cases, Adapters), SOLID, Parameterized queries, Fail Fast. |
 
 ---
 
