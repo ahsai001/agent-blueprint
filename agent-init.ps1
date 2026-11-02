@@ -31,11 +31,13 @@ function Show-Help {
     Write-Host "  agent-init.cmd   [-Profile <nama>] [-Target <path>] [-Force]"
     Write-Host ""
     Write-Host "PILIHAN PROFIL:" -ForegroundColor White
-    Write-Host "  flutter, codeigniter, laravel, dotnet, nodejs, general"
+    Write-Host "  flutter, codeigniter, laravel, dotnet, nodejs, python, go, general"
     Write-Host ""
     Write-Host "CONTOH:" -ForegroundColor White
     Write-Host "  agent-init"
     Write-Host "  agent-init -Profile flutter"
+    Write-Host "  agent-init -Profile python"
+    Write-Host "  agent-init -Profile go"
     Write-Host "  agent-init -Profile laravel -Target C:\Projects\MyApi"
     exit 0
 }
@@ -61,6 +63,8 @@ function Detect-Stack {
     if ((Test-Path (Join-Path $Dir "application\config\config.php")) -or (Test-Path (Join-Path $Dir "system\core"))) { return "codeigniter" }
     if ((Get-ChildItem -Path $Dir -Filter "*.csproj" -ErrorAction SilentlyContinue).Count -gt 0 -or (Get-ChildItem -Path $Dir -Filter "*.sln" -ErrorAction SilentlyContinue).Count -gt 0) { return "dotnet" }
     if (Test-Path (Join-Path $Dir "package.json")) { return "nodejs" }
+    if (Test-Path (Join-Path $Dir "go.mod")) { return "go" }
+    if ((Test-Path (Join-Path $Dir "pyproject.toml")) -or (Test-Path (Join-Path $Dir "requirements.txt")) -or (Test-Path (Join-Path $Dir "Pipfile")) -or (Test-Path (Join-Path $Dir "manage.py"))) { return "python" }
     return ""
 }
 
@@ -79,15 +83,19 @@ if ([string]::IsNullOrWhiteSpace($ProfileName)) {
         Write-Host "  3) Laravel (Service/Action, FormRequest, Migration safety)"
         Write-Host "  4) .NET & C# (Clean Arch, CQRS, EF Core AsNoTracking)"
         Write-Host "  5) Node.js & TypeScript (NestJS/Express, Zod, Strict Types)"
-        Write-Host "  6) General (Prinsip Universal Clean Code & SOLID)"
+        Write-Host "  6) Python (FastAPI/Django, Type Hints, Pydantic, SQLAlchemy)"
+        Write-Host "  7) Go / Golang (Standard Layout, Context, Error Wrapping, Race Check)"
+        Write-Host "  8) General (Prinsip Universal Clean Code & SOLID)"
         Write-Host ""
-        $choice = Read-Host "Masukkan pilihan [1-6]"
+        $choice = Read-Host "Masukkan pilihan [1-8]"
         switch ($choice) {
             "1" { $ProfileName = "flutter" }
             "2" { $ProfileName = "codeigniter" }
             "3" { $ProfileName = "laravel" }
             "4" { $ProfileName = "dotnet" }
             "5" { $ProfileName = "nodejs" }
+            "6" { $ProfileName = "python" }
+            "7" { $ProfileName = "go" }
             Default { $ProfileName = "general" }
         }
     }

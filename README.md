@@ -62,6 +62,8 @@ agent-init -p laravel      # untuk Laravel
 agent-init -p codeigniter  # untuk CodeIgniter
 agent-init -p dotnet       # untuk .NET / C#
 agent-init -p nodejs       # untuk Node.js / NestJS / Express
+agent-init -p python       # untuk Python (FastAPI / Django / Flask)
+agent-init -p go           # untuk Go / Golang
 ```
 
 #### 3. Onboarding Awal:
@@ -105,6 +107,8 @@ Sistem ini dirancang dengan prinsip **Hybrid (Script + AI Agent)**:
 | **Laravel** | `-p laravel` | Service/Action separation, FormRequest validation wajib, JsonResource DTO, Migration safety (`down()` method), No N+1 query. |
 | **.NET & C#** | `-p dotnet` | Clean Architecture (Domain, App, Infra, WebApi), DTO isolation, EF Core `.AsNoTracking()`, Async CancellationToken. |
 | **Node.js & TS** | `-p nodejs` | TypeScript strict (No `any`), Zod schema validation, Prisma/TypeORM transaction, Controller-Service separation. |
+| **Python** | `-p python` | Type hints strict, Pydantic/DRF validation, SQLAlchemy/Django ACID transaction, Async event-loop non-blocking rules, Ruff/Mypy gates. |
+| **Go / Golang** | `-p go` | Standard Go layout (`cmd/`, `internal/`), Explicit error handling (`%w`), `ctx context.Context` propagation, `defer tx.Rollback()`, Goroutine lifecycle & Race detector. |
 | **General** | `-p general` | Prinsip universal SOLID, Clean Code, Parameterized queries, Fail Fast. |
 
 ---

@@ -43,7 +43,7 @@ show_help() {
   echo "  agent-init [OPTIONS]"
   echo ""
   echo -e "${BOLD}OPSI:${NC}"
-  echo "  -p, --profile <name>   Profil stack: flutter, codeigniter, laravel, dotnet, nodejs, general"
+  echo "  -p, --profile <name>   Profil stack: flutter, codeigniter, laravel, dotnet, nodejs, python, go, general"
   echo "  -t, --target <path>    Direktori project target (default: direktori saat ini)"
   echo "  -f, --force            Overwrite jika file AGENTS.md sudah ada"
   echo "  -h, --help             Tampilkan bantuan ini"
@@ -51,6 +51,8 @@ show_help() {
   echo -e "${BOLD}CONTOH:${NC}"
   echo "  agent-init                     # Auto-detect atau pilih via menu interaktif"
   echo "  agent-init -p flutter          # Inisialisasi dengan profil Flutter"
+  echo "  agent-init -p python           # Inisialisasi dengan profil Python"
+  echo "  agent-init -p go               # Inisialisasi dengan profil Go"
   echo "  agent-init -p laravel -t /var/www/my-api"
   exit 0
 }
@@ -102,6 +104,10 @@ auto_detect_profile() {
     echo "dotnet"
   elif [ -f "$TARGET_DIR/package.json" ]; then
     echo "nodejs"
+  elif [ -f "$TARGET_DIR/go.mod" ]; then
+    echo "go"
+  elif [ -f "$TARGET_DIR/pyproject.toml" ] || [ -f "$TARGET_DIR/requirements.txt" ] || [ -f "$TARGET_DIR/Pipfile" ] || [ -f "$TARGET_DIR/manage.py" ]; then
+    echo "python"
   else
     echo ""
   fi
@@ -120,15 +126,19 @@ if [ -z "$PROFILE" ]; then
     echo "  3) Laravel (Service/Action, FormRequest, Migration safety)"
     echo "  4) .NET & C# (Clean Arch, CQRS, EF Core AsNoTracking)"
     echo "  5) Node.js & TypeScript (NestJS/Express, Zod, Strict Types)"
-    echo "  6) General (Prinsip Universal Clean Code & SOLID)"
+    echo "  6) Python (FastAPI/Django, Type Hints, Pydantic, SQLAlchemy)"
+    echo "  7) Go / Golang (Standard Layout, Context, Error Wrapping, Race Check)"
+    echo "  8) General (Prinsip Universal Clean Code & SOLID)"
     echo ""
-    read -rp "Masukkan pilihan [1-6]: " choice
+    read -rp "Masukkan pilihan [1-8]: " choice
     case $choice in
       1) PROFILE="flutter" ;;
       2) PROFILE="codeigniter" ;;
       3) PROFILE="laravel" ;;
       4) PROFILE="dotnet" ;;
       5) PROFILE="nodejs" ;;
+      6) PROFILE="python" ;;
+      7) PROFILE="go" ;;
       *) PROFILE="general" ;;
     esac
   fi

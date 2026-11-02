@@ -29,8 +29,8 @@ if git diff --cached | grep -E "BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY" > /dev/nu
 fi
 
 # 3. Cek sisa debug statements terlarang di kode yang di-stage
-# Cek dd(), var_dump(), debugger;
-STAGED_CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(php|js|ts|dart|cs)$" || true)
+# Cek dd(), var_dump(), debugger;, breakpoint(), pdb
+STAGED_CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(php|js|ts|dart|cs|py|go)$" || true)
 
 if [ -n "$STAGED_CODE_FILES" ]; then
     for file in $STAGED_CODE_FILES; do
@@ -45,6 +45,13 @@ if [ -n "$STAGED_CODE_FILES" ]; then
             if [[ "$file" =~ \.(js|ts)$ ]]; then
                 if git diff --cached "$file" | grep -E "^\+[[:space:]]*debugger;" > /dev/null; then
                     echo -e "${RED}❌ ERROR: Terdeteksi 'debugger;' di file JavaScript/TypeScript: ${file}${NC}"
+                    exit 1
+                fi
+            fi
+            # Cek breakpoint() atau pdb pada file Python
+            if [[ "$file" =~ \.py$ ]]; then
+                if git diff --cached "$file" | grep -E "^\+[[:space:]]*(breakpoint\(|import pdb|pdb\.set_trace\()" > /dev/null; then
+                    echo -e "${RED}❌ ERROR: Terdeteksi debug breakpoint (breakpoint()/pdb) di file Python: ${file}${NC}"
                     exit 1
                 fi
             fi
