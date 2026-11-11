@@ -20,6 +20,8 @@ Tolong lakukan audit sinkronisasi berikut:
    - *Strict Zero-Dummy Policy*: Dilarang membuat array/mock fallback saat data API kosong atau error.
    - *SOP Inspect Definition First*: Wajib membaca definisi fungsi/helper sebelum memanggilnya.
    - *Scope Lock*: Dilarang mass reformatting atau mengubah file di luar tiket.
+   - *Anti-Slop Code Hygiene*: Dilarang menulis komentar redundan, over-engineering 1 pemanggil, atau dead boilerplate.
+   - *Security & Injection Prevention*: Wajib parameterized queries/ORM, boundary validation, dan dilarang leak internal stack traces.
    - *Hot-Spot Append-Only*: Router, DI container, dan i18n hanya boleh di-append, jangan diacak urutannya.
    - *Jika ada prinsip di atas yang belum tercantum, tambahkan ke dalam `AGENTS.md` secara rapi.*
 

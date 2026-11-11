@@ -31,3 +31,16 @@ Aturan ini berlaku mutlak untuk semua AI Agent di seluruh framework dan lingkung
 ### 4. Git Commit & Push Safeguard
 - Dilarang melakukan `git commit` atau `git push` otomatis tanpa persetujuan atau instruksi eksplisit dari user.
 - Tampilkan ringkasan perubahan file (`git status`) dan minta konfirmasi user sebelum melakukan commit.
+
+---
+
+### 5. Input Validation & Injection Prevention (Security Guardrail)
+- **Parameterized Query Wajib**: Dilarang menggabungkan (*concatenate*) input pengguna atau variabel mentah langsung ke dalam string query SQL/NoSQL. Selalu gunakan prepared statements, ORM bindings, atau parameter query aman untuk mencegah SQL Injection.
+- **Strict Boundary Validation**: Seluruh input dari luar (request body, query param, URL segment, headers) wajib divalidasi dan disanitasi di layer boundary (FormRequest, DTO, Zod schema, Pydantic, atau validator framework) sebelum masuk ke core service/logika bisnis.
+- **Command & Script Injection**: Dilarang mengeksekusi perintah shell mentah (`eval()`, `exec()`, `system()`, shell invocation) menggunakan input yang dikendalikan pengguna tanpa whitelist ketat.
+
+---
+
+### 6. Information Disclosure & Error Shield
+- **No Stack Trace Exposure**: Dilarang mengekspos detail internal server, database raw errors, SQL query error, file paths, atau stack trace langsung ke response HTTP client / production logs. Tangani dengan generic error response yang aman.
+- **Sensitive Data Masking**: Jangan menampilkan atau mencatat (logging) data sensitif (password, nomor kartu, auth token, data pribadi sensitif) ke dalam console log atau file log aplikasi.

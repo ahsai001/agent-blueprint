@@ -10,7 +10,7 @@ Kirimkan prompt di bawah ini ke AI Agent (Antigravity, Cursor, Claude Code, Wind
 Halo! Project ini telah dipasangi standar arsitektur dan safety guardrails di file `AGENTS.md`.
 
 Tolong lakukan proses ONBOARDING awal sekarang:
-1. Baca dan pahami seluruh isi `AGENTS.md` (termasuk Core Safety, Zero-Dummy Policy, Scope Lock, SOP Inspect First, dan Profil Arsitektur).
+1. Baca dan pahami seluruh isi `AGENTS.md` (termasuk Core Safety & Security Guardrails, Anti-Slop Code Hygiene, Zero-Dummy Policy, Scope Lock, SOP Inspect First, dan Profil Arsitektur).
 2. Lakukan audit struktur codebase pada repository ini:
    - Identifikasi file routing utama, dependency injection/service provider, dan file konfigurasi.
    - Scan codebase untuk menemukan file monolitik besar (> 1.000 baris) atau modul warisan yang rentan rusak.

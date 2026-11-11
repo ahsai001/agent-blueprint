@@ -113,13 +113,16 @@ Sistem ini dirancang dengan prinsip **Hybrid (Script + AI Agent)**:
 
 ---
 
-## 🛡️ Fitur Keselamatan yang Otomatis Aktif
+## 🛡️ Fitur Keselamatan & Kualitas yang Otomatis Aktif
 
 1. **Read-Only Database by Default**: Agent dilarang mengeksekusi query `INSERT`/`UPDATE`/`DELETE`/`ALTER`/`DROP` langsung ke database. Agent wajib membuatkan script SQL agar dieksekusi atau diverifikasi oleh user.
 2. **Strict Zero-Dummy Policy**: Agent dilarang keras membuat array data palsu saat pemanggilan API kosong atau gagal. Wajib menampilkan Empty State atau melempar Exception.
-3. **SOP Inspect Definition First**: Agent dilarang berasumsi nama parameter helper; wajib membaca file definisi helper (`view_file`) sebelum menulis kode pemanggilannya.
-4. **Scope Lock**: Dilarang me-reformat seluruh repo atau mengubah file di luar tiket yang ditugaskan.
-5. **Git Pre-commit Hook**: Otomatis menggagalkan commit jika ada file `.env`, private key SSH, atau fungsi debug tertinggal (`dd()`, `debugger;`).
+3. **Anti-Slop Code Hygiene**: Melarang AI menulis komentar redundan (`// loop through users`), over-engineering (membuat generic factory/interface untuk 1 pemanggil saja), dan wrapping error berlebihan.
+4. **Security & Injection Guardrail**: Wajib prepared statements / parameterized queries, strict boundary validation di controller/DTO, dan dilarang mengekspos raw database error/stack trace ke client.
+5. **SOP Inspect Definition First**: Agent dilarang berasumsi nama parameter helper; wajib membaca file definisi helper (`view_file`) sebelum menulis kode pemanggilannya.
+6. **Scope Lock**: Dilarang me-reformat seluruh repo atau mengubah file di luar tiket yang ditugaskan.
+7. **Git Pre-commit Hook**: Otomatis menggagalkan commit jika ada file `.env`, private key SSH, atau fungsi debug tertinggal (`dd()`, `debugger;`).
+8. **On-Demand Security Audit Playbook**: Tersedia SOP audit keamanan lengkap di `prompts/SECURITY_AUDIT.md` untuk pentest mandiri sebelum rilis.
 
 ---
 
