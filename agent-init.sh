@@ -327,12 +327,21 @@ fi
 create_symlink() {
   local link_name="$1"
   local target="AGENTS.md"
-  rm -f "$TARGET_DIR/$link_name"
-  if ln -s "$target" "$TARGET_DIR/$link_name" 2>/dev/null; then
-    echo -e "${GREEN}✓ Symlink dibuat: ${link_name} -> AGENTS.md${NC}"
+  local target_path="$TARGET_DIR/$link_name"
+
+  mkdir -p "$(dirname "$target_path")"
+  rm -f "$target_path"
+
+  local rel_target="$target"
+  if [[ "$link_name" == *"/"* ]]; then
+    rel_target="../$target"
+  fi
+
+  if ln -s "$rel_target" "$target_path" 2>/dev/null; then
+    echo -e "${GREEN}✓ Symlink dibuat: ${link_name} -> ${rel_target}${NC}"
   else
-    # Fallback jika berjalan di Windows Git Bash tanpa hak symlink / CIFS mount
-    cp "$TARGET_DIR/$target" "$TARGET_DIR/$link_name"
+    # Fallback jika berjalan di lingkungan tanpa hak symlink
+    cp "$TARGET_DIR/$target" "$target_path"
     echo -e "${YELLOW}✓ File disalin (fallback non-symlink): ${link_name}${NC}"
   fi
 }
@@ -340,6 +349,8 @@ create_symlink() {
 create_symlink "CLAUDE.md"
 create_symlink ".cursorrules"
 create_symlink ".windsurfrules"
+create_symlink ".clinerules"
+create_symlink ".github/copilot-instructions.md"
 
 # 5. Pasang Git Pre-commit Hook jika ada folder .git
 if [ -d "$TARGET_DIR/.git" ]; then

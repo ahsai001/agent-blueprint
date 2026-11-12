@@ -280,16 +280,25 @@ Dokumen ini memuat standar baku arsitektur, safety guardrails, dan protokol kerj
 function Link-Or-Copy {
     param([string]$LinkName)
     $Destination = Join-Path $TargetDir $LinkName
+    $ParentDir = Split-Path -Parent $Destination
+    if ($ParentDir -and (-not (Test-Path $ParentDir))) {
+        New-Item -ItemType Directory -Path $ParentDir -Force | Out-Null
+    }
     if (Test-Path $Destination) {
         Remove-Item -Path $Destination -Force -ErrorAction SilentlyContinue
     }
-    
+
+    $relativeTarget = "AGENTS.md"
+    if ($LinkName.Contains("/") -or $LinkName.Contains("\")) {
+        $relativeTarget = "..\AGENTS.md"
+    }
+
     $symlinkSuccess = $false
     try {
         # Coba buat symbolic link
-        New-Item -ItemType SymbolicLink -Path $Destination -Target "AGENTS.md" -Force -ErrorAction Stop | Out-Null
+        New-Item -ItemType SymbolicLink -Path $Destination -Target $relativeTarget -Force -ErrorAction Stop | Out-Null
         $symlinkSuccess = $true
-        Write-Host "✓ Symlink dibuat: $LinkName -> AGENTS.md" -ForegroundColor Green
+        Write-Host "✓ Symlink dibuat: $LinkName -> $relativeTarget" -ForegroundColor Green
     } catch {
         # Fallback jika akun Windows tidak memiliki hak cipta symlink (non-developer mode)
         Copy-Item -Path $OutputFile -Destination $Destination -Force
@@ -300,6 +309,8 @@ function Link-Or-Copy {
 Link-Or-Copy "CLAUDE.md"
 Link-Or-Copy ".cursorrules"
 Link-Or-Copy ".windsurfrules"
+Link-Or-Copy ".clinerules"
+Link-Or-Copy ".github\copilot-instructions.md"
 
 # 6. Pasang Git Pre-commit Hook jika ada folder .git
 $GitDir = Join-Path $TargetDir ".git"

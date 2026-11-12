@@ -24,7 +24,7 @@ Tolong implementasikan repo blueprint ini ke project ini: https://github.com/ahs
 1. **Agent otomatis membaca** repo blueprint dari link GitHub di atas.
 2. **Agent mendeteksi stack teknologi** project Anda (Flutter, Laravel, CodeIgniter, .NET, Node.js, dll.).
 3. **Agent men-generate file `AGENTS.md`** lengkap dengan safety guardrails + profil framework yang relevan.
-4. **Agent membuat symlinks** (`.cursorrules`, `CLAUDE.md`, `.windsurfrules`) dan memasang Git pre-commit hooks.
+4. **Agent membuat symlinks** (`.cursorrules`, `CLAUDE.md`, `.windsurfrules`, `.clinerules`, `.github/copilot-instructions.md`) dan memasang Git pre-commit hooks.
 5. **Agent langsung mengaudit codebase** dan mengisi bagian `# PROJECT-SPECIFIC KNOWLEDGE & REGISTRY` di `AGENTS.md` (mencatat file controller besar, helper, dan route).
 6. **Selesai!** Anda tinggal santai dan project Anda langsung memiliki standar profesional.
 
@@ -85,7 +85,7 @@ Sistem ini dirancang dengan prinsip **Hybrid (Script + AI Agent)**:
 ┌─────────────────────────────────────────────────────────────────┐
 │ 1. STRUKTUR STATIS (Deterministik & Cepat)                     │
 │    - Men-generate AGENTS.md berisi aturan core safety           │
-│    - Membuat symlink: CLAUDE.md, .cursorrules, .windsurfrules   │
+│    - Membuat symlink: CLAUDE.md, .cursorrules, .windsurfrules, .clinerules, copilot-instructions │
 │    - Memasang Git pre-commit hook validator                     │
 └────────────────────────────────┬────────────────────────────────┘
                                  │
