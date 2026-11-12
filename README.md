@@ -20,13 +20,19 @@ Cukup buka chat AI Agent favorit Anda (**Antigravity, Cursor, Claude Code, Winds
 Tolong implementasikan repo blueprint ini ke project ini: https://github.com/ahsai001/agent-blueprint
 ```
 
-#### Apa yang dilakukan AI Agent di balik layar?
-1. **Agent otomatis membaca** repo blueprint dari link GitHub di atas.
-2. **Agent mendeteksi stack teknologi** project Anda (Flutter, Laravel, CodeIgniter, .NET, Node.js, dll.).
-3. **Agent men-generate file `AGENTS.md`** lengkap dengan safety guardrails + profil framework yang relevan.
-4. **Agent membuat symlinks** (`.cursorrules`, `CLAUDE.md`, `.windsurfrules`, `.clinerules`, `.github/copilot-instructions.md`) dan memasang Git pre-commit hooks.
-5. **Agent langsung mengaudit codebase** dan mengisi bagian `# PROJECT-SPECIFIC KNOWLEDGE & REGISTRY` di `AGENTS.md` (mencatat file controller besar, helper, dan route).
-6. **Selesai!** Anda tinggal santai dan project Anda langsung memiliki standar profesional.
+> 🤖 **PROTOKOL EKSEKUSI WAJIB UNTUK AI AGENT YANG MEMBACA REPO INI:**
+>
+> * **KASUS A — Project BARU (Belum ada `AGENTS.md`)**:
+>   1. Deteksi stack teknologi project ini (Flutter, Laravel, CodeIgniter, Node.js, Python, Go, .NET, dll.).
+>   2. Gabungkan Core Guardrails (`templates/core/0[1-5]*.md`) + Profil Stack yang cocok ke dalam file baru `AGENTS.md`.
+>   3. Buat 5 symlinks: `.cursorrules`, `CLAUDE.md`, `.windsurfrules`, `.clinerules`, dan `.github/copilot-instructions.md`.
+>   4. Pasang Git pre-commit hook dari `templates/hooks/pre-commit`.
+>   5. Audit codebase dan isi section `# PROJECT-SPECIFIC KNOWLEDGE & REGISTRY` dengan fakta hasil audit nyata.
+>
+> * **KASUS B — Project EXISTING (Sudah ada `AGENTS.md` kustom)**:
+>   1. **DILARANG KERAS MENGHAPUS / ME-REWRITE** aturan kustom yang sudah ada sebelumnya!
+>   2. Lakukan **Safe Append**: Pertahankan 100% teks aturan lama di bagian atas, dan hanya sisipkan modul guardrails (seperti Karpathy Guidelines atau Core Safety) yang belum ada di bagian akhir file.
+>   3. Pastikan kelima symlink di atas dan Git pre-commit hook sudah terpasang.
 
 ---
 
@@ -133,11 +139,11 @@ Sistem ini dirancang dengan prinsip **Hybrid (Script + AI Agent)**:
 
 #### 1. Apakah project yang sudah ada `AGENTS.md` lama (seperti web-syshab/syshab-api) aman?
 Sangat aman! Jika `AGENTS.md` sudah ada:
-- **Jika via CLI (`agent-init`)**: Script menyediakan pilihan `1) Pasang Symlinks & Hooks saja (pertahankan file lama)` atau `2) Backup otomatis & ganti`.
-- **Jika via Prompt AI**: Agent diinstruksikan untuk mempertahankan aturan spesifik lama dan hanya menyisipkan guardrails universal yang belum ada.
+- **Jika via CLI (`agent-init`)**: Gunakan opsi `1) Smart Sync` atau perintah `agent-init -s`. Skrip akan melakukan Safe Append (100% aturan lama utuh, hanya menyisipkan modul baru).
+- **Jika via Prompt AI**: AI diwajibkan oleh protokol di atas untuk tidak menghapus aturan lama dan hanya melakukan Safe Append.
 
 #### 2. Di Windows muncul pesan "Symbolic link creation failed"?
-Script sudah dilengkapi **auto-fallback**: jika akun Windows Anda belum mengaktifkan *Developer Mode*, script otomatis menyalin file `AGENTS.md` ke `CLAUDE.md`, `.cursorrules`, dan `.windsurfrules`.
+Script sudah dilengkapi **auto-fallback**: jika akun Windows Anda belum mengaktifkan *Developer Mode*, script otomatis menyalin file `AGENTS.md` ke `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.clinerules`, dan `.github/copilot-instructions.md`.
 
 #### 3. Bagaimana jika saya ingin menambah profil framework baru (misal: Python FastAPI / Go)?
 Cukup tambahkan file markdown baru di `templates/profiles/<nama-stack>.md`. Script dan Agent otomatis bisa mengenali opsi baru tersebut.
