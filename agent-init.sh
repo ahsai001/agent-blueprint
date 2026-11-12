@@ -28,6 +28,7 @@ TARGET_DIR="$(pwd)"
 PROFILE=""
 FORCE=false
 SMART_SYNC=false
+SAFE_APPEND=false
 
 print_banner() {
   echo -e "${CYAN}${BOLD}"
@@ -46,13 +47,16 @@ show_help() {
   echo -e "${BOLD}OPSI:${NC}"
   echo "  -p, --profile <name>   Profil stack: flutter, codeigniter, laravel, dotnet, nodejs, python, go, general"
   echo "  -t, --target <path>    Direktori project target (default: direktori saat ini)"
-  echo "  -s, --sync             Smart Sync: update Core Rules & Profil, pertahankan Project Knowledge lama"
+  echo "  -s, --sync             Smart Sync: update Core Rules & Profil (aman untuk project kustom)"
+  echo "  -a, --append           Safe Append: sisipkan Guardrails baru di akhir file (100% isi lama utuh)"
   echo "  -f, --force            Overwrite total jika file AGENTS.md sudah ada"
   echo "  -h, --help             Tampilkan bantuan ini"
   echo ""
   echo -e "${BOLD}CONTOH:${NC}"
   echo "  agent-init                     # Auto-detect atau pilih via menu interaktif"
   echo "  agent-init -p flutter          # Inisialisasi dengan profil Flutter"
+  echo "  agent-init -s                  # Smart Sync (otomatis Safe Append jika project kustom)"
+  echo "  agent-init -a                  # Safe Append langsung tanpa ubah aturan lama"
   echo "  agent-init -p python           # Inisialisasi dengan profil Python"
   echo "  agent-init -p go               # Inisialisasi dengan profil Go"
   echo "  agent-init -p laravel -t /var/www/my-api"
@@ -72,6 +76,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -s|--sync)
       SMART_SYNC=true
+      shift
+      ;;
+    -a|--append)
+      SAFE_APPEND=true
       shift
       ;;
     -f|--force)
@@ -186,51 +194,175 @@ extract_knowledge() {
   fi
 }
 
+# Fungsi Safe Append: menyisipkan modul guardrails yang belum ada tanpa mengubah aturan lama
+safe_append_guardrails() {
+  local target_file="$1"
+  local blueprint_dir="$2"
+
+  local append_buffer=""
+  local added_count=0
+  for core_file in "$blueprint_dir"/templates/core/0[1-5]*.md; do
+    if [ -f "$core_file" ]; then
+      local header_title
+      header_title=$(grep -E "^#+ " "$core_file" | head -n 1 | sed 's/^#* //')
+      if [ -n "$header_title" ] && grep -F -q "$header_title" "$target_file"; then
+        echo -e "${YELLOW}ℹ️  Bagian '$header_title' sudah ada di file, dilewati.${NC}"
+      else
+        local content
+        content=$(cat "$core_file")
+        append_buffer="${append_buffer}
+${content}
+
+---
+"
+        echo -e "${GREEN}✓ Menyisipkan modul: $header_title${NC}"
+        added_count=$((added_count + 1))
+      fi
+    fi
+  done
+
+  if [ "$added_count" -gt 0 ]; then
+    echo "" >> "$target_file"
+    echo "---" >> "$target_file"
+    echo "" >> "$target_file"
+    echo "<!-- ===================================================================== -->" >> "$target_file"
+    echo "<!-- UNIVERSAL SAFETY GUARDRAILS & AI BEHAVIORAL STANDARDS                 -->" >> "$target_file"
+    echo "<!-- Disisipkan otomatis oleh agent-blueprint (Safe Append Mode)           -->" >> "$target_file"
+    echo "<!-- Tanggal: $(date)                                                 -->" >> "$target_file"
+    echo "<!-- ===================================================================== -->" >> "$target_file"
+    echo "$append_buffer" >> "$target_file"
+    echo -e "${GREEN}✓ Berhasil menyisipkan $added_count modul guardrails baru (100% aturan lama tetap utuh).${NC}"
+  else
+    echo -e "${BLUE}ℹ️  Seluruh modul guardrails sudah lengkap di AGENTS.md (tidak ada yang perlu diubah).${NC}"
+  fi
+}
+
 PRESERVED_KNOWLEDGE=""
 
 if [ -f "$OUTPUT_FILE" ] && [ "$FORCE" = false ]; then
-  if [ "$SMART_SYNC" = true ]; then
-    existing_choice=1
-  else
-    echo -e "${YELLOW}⚠️  Terdeteksi file AGENTS.md sudah ada di: $OUTPUT_FILE${NC}"
-    echo ""
-    echo "Pilih tindakan yang diinginkan:"
-    echo "  1) Smart Sync: Update Core Rules & Profil, pertahankan Project Knowledge lama (Rekomendasi)"
-    echo "  2) Backup AGENTS.md lama & Ganti total dengan Blueprint baru"
-    echo "  3) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md lama apa adanya)"
-    echo "  4) Batal"
-    echo ""
-    read -rp "Masukkan pilihan [1-4] (default: 1): " existing_choice
-    existing_choice="${existing_choice:-1}"
+  IS_BLUEPRINT=false
+  if grep -q "Source Blueprint: agent-blueprint" "$OUTPUT_FILE" 2>/dev/null || \
+     grep -q "PROJECT-SPECIFIC KNOWLEDGE" "$OUTPUT_FILE" 2>/dev/null; then
+    IS_BLUEPRINT=true
   fi
 
-  case $existing_choice in
-    1)
-      BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
-      cp "$OUTPUT_FILE" "$BACKUP_FILE"
-      echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+  if [ "$SAFE_APPEND" = true ]; then
+    BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+    cp "$OUTPUT_FILE" "$BACKUP_FILE"
+    echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+    safe_append_guardrails "$OUTPUT_FILE" "$BLUEPRINT_DIR"
+    SKIP_GENERATE_AGENTS=true
+  elif [ "$SMART_SYNC" = true ]; then
+    BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+    cp "$OUTPUT_FILE" "$BACKUP_FILE"
+    echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+    if [ "$IS_BLUEPRINT" = true ]; then
       PRESERVED_KNOWLEDGE=$(extract_knowledge "$BACKUP_FILE")
       if [ -n "$PRESERVED_KNOWLEDGE" ]; then
         echo -e "${BLUE}ℹ️  Mendeteksi dan mempertahankan Project-Specific Knowledge dari file lama...${NC}"
       fi
       SKIP_GENERATE_AGENTS=false
-      ;;
-    2)
-      BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
-      cp "$OUTPUT_FILE" "$BACKUP_FILE"
-      echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
-      PRESERVED_KNOWLEDGE=""
-      SKIP_GENERATE_AGENTS=false
-      ;;
-    3)
-      echo -e "${BLUE}ℹ️  Mempertahankan isi AGENTS.md yang sudah ada...${NC}"
+    else
+      echo -e "${BLUE}ℹ️  Mendeteksi AGENTS.md kustom. Melakukan Safe Append agar seluruh aturan lama 100% utuh...${NC}"
+      safe_append_guardrails "$OUTPUT_FILE" "$BLUEPRINT_DIR"
       SKIP_GENERATE_AGENTS=true
-      ;;
-    *)
-      echo -e "${BLUE}Operasi dibatalkan.${NC}"
-      exit 0
-      ;;
-  esac
+    fi
+  else
+    # Menu interaktif
+    if [ "$IS_BLUEPRINT" = false ]; then
+      echo -e "${YELLOW}⚠️  Terdeteksi file AGENTS.md kustom (memuat aturan spesifik project ini).${NC}"
+      echo ""
+      echo "Pilih tindakan yang diinginkan:"
+      echo "  1) Safe Append: Sisipkan Guardrails & Karpathy di akhir file (100% aturan lama AMAN & UTUH) [Rekomendasi]"
+      echo "  2) Smart Wrap: Jadikan seluruh aturan lama sebagai Project Knowledge di bawah Core Blueprint"
+      echo "  3) Backup AGENTS.md lama & Ganti total dengan Blueprint baru"
+      echo "  4) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md apa adanya)"
+      echo "  5) Batal"
+      echo ""
+      read -rp "Masukkan pilihan [1-5] (default: 1): " existing_choice
+      existing_choice="${existing_choice:-1}"
+
+      case $existing_choice in
+        1)
+          BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+          cp "$OUTPUT_FILE" "$BACKUP_FILE"
+          echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+          safe_append_guardrails "$OUTPUT_FILE" "$BLUEPRINT_DIR"
+          SKIP_GENERATE_AGENTS=true
+          ;;
+        2)
+          BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+          cp "$OUTPUT_FILE" "$BACKUP_FILE"
+          echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+          PRESERVED_KNOWLEDGE="$(cat "$BACKUP_FILE")"
+          echo -e "${BLUE}ℹ️  Membungkus seluruh aturan lama ke bagian Project Knowledge...${NC}"
+          SKIP_GENERATE_AGENTS=false
+          ;;
+        3)
+          BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+          cp "$OUTPUT_FILE" "$BACKUP_FILE"
+          echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+          PRESERVED_KNOWLEDGE=""
+          SKIP_GENERATE_AGENTS=false
+          ;;
+        4)
+          echo -e "${BLUE}ℹ️  Mempertahankan isi AGENTS.md yang sudah ada...${NC}"
+          SKIP_GENERATE_AGENTS=true
+          ;;
+        *)
+          echo -e "${BLUE}Operasi dibatalkan.${NC}"
+          exit 0
+          ;;
+      esac
+    else
+      echo -e "${YELLOW}⚠️  Terdeteksi file AGENTS.md (format agent-blueprint).${NC}"
+      echo ""
+      echo "Pilih tindakan yang diinginkan:"
+      echo "  1) Smart Sync: Update Core Rules & Profil, pertahankan Project Knowledge lama [Rekomendasi]"
+      echo "  2) Safe Append: Hanya sisipkan modul guardrails yang belum ada (tanpa rewrite)"
+      echo "  3) Backup AGENTS.md lama & Ganti total dengan Blueprint baru"
+      echo "  4) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md apa adanya)"
+      echo "  5) Batal"
+      echo ""
+      read -rp "Masukkan pilihan [1-5] (default: 1): " existing_choice
+      existing_choice="${existing_choice:-1}"
+
+      case $existing_choice in
+        1)
+          BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+          cp "$OUTPUT_FILE" "$BACKUP_FILE"
+          echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+          PRESERVED_KNOWLEDGE=$(extract_knowledge "$BACKUP_FILE")
+          if [ -n "$PRESERVED_KNOWLEDGE" ]; then
+            echo -e "${BLUE}ℹ️  Mendeteksi dan mempertahankan Project-Specific Knowledge dari file lama...${NC}"
+          fi
+          SKIP_GENERATE_AGENTS=false
+          ;;
+        2)
+          BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+          cp "$OUTPUT_FILE" "$BACKUP_FILE"
+          echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+          safe_append_guardrails "$OUTPUT_FILE" "$BLUEPRINT_DIR"
+          SKIP_GENERATE_AGENTS=true
+          ;;
+        3)
+          BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+          cp "$OUTPUT_FILE" "$BACKUP_FILE"
+          echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+          PRESERVED_KNOWLEDGE=""
+          SKIP_GENERATE_AGENTS=false
+          ;;
+        4)
+          echo -e "${BLUE}ℹ️  Mempertahankan isi AGENTS.md yang sudah ada...${NC}"
+          SKIP_GENERATE_AGENTS=true
+          ;;
+        *)
+          echo -e "${BLUE}Operasi dibatalkan.${NC}"
+          exit 0
+          ;;
+      esac
+    fi
+  fi
 else
   SKIP_GENERATE_AGENTS=false
 fi
@@ -253,7 +385,7 @@ Dokumen ini memuat standar baku arsitektur, safety guardrails, dan protokol kerj
 EOF
 
   # 2. Append Core Templates (01 to 05)
-  for core_file in "$BLUEPRINT_DIR"/templates/core/[0-5]*.md; do
+  for core_file in "$BLUEPRINT_DIR"/templates/core/0[1-5]*.md; do
     if [ -f "$core_file" ]; then
       echo "" >> "$OUTPUT_FILE"
       cat "$core_file" >> "$OUTPUT_FILE"

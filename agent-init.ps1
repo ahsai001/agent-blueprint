@@ -17,6 +17,9 @@ param (
     [Alias("s")]
     [switch]$Sync,
 
+    [Alias("a")]
+    [switch]$Append,
+
     [Alias("h")]
     [switch]$Help
 )
@@ -30,8 +33,8 @@ function Show-Help {
     Write-Host "╚═══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "PENGGUNAAN:" -ForegroundColor White
-    Write-Host "  .\agent-init.ps1 [-Profile <nama>] [-Target <path>] [-Sync] [-Force]"
-    Write-Host "  agent-init.cmd   [-Profile <nama>] [-Target <path>] [-Sync] [-Force]"
+    Write-Host "  .\agent-init.ps1 [-Profile <nama>] [-Target <path>] [-Sync] [-Append] [-Force]"
+    Write-Host "  agent-init.cmd   [-Profile <nama>] [-Target <path>] [-Sync] [-Append] [-Force]"
     Write-Host ""
     Write-Host "PILIHAN PROFIL:" -ForegroundColor White
     Write-Host "  flutter, codeigniter, laravel, dotnet, nodejs, python, go, general"
@@ -139,51 +142,178 @@ function Extract-ProjectKnowledge {
     return $null
 }
 
+function Safe-Append-Guardrails {
+    param([string]$TargetFile, [string]$BlueprintDirectory)
+
+    $existingContent = [System.IO.File]::ReadAllText($TargetFile, [System.Text.Encoding]::UTF8)
+    $appendBuffer = ""
+    $CoreFiles = Get-ChildItem -Path (Join-Path $BlueprintDirectory "templates\core") -Filter "0[1-5]*.md" | Sort-Object Name
+    $addedCount = 0
+    foreach ($cf in $CoreFiles) {
+        $lines = Get-Content $cf.FullName
+        $headerLine = $lines | Where-Object { $_ -match "^#+\s+(.+)" } | Select-Object -First 1
+        $headerTitle = ""
+        if ($headerLine -match "^#+\s+(.+)") {
+            $headerTitle = $matches[1]
+        }
+
+        if ($headerTitle -and $existingContent.Contains($headerTitle)) {
+            Write-Host "ℹ️ Bagian '$headerTitle' sudah ada, dilewati." -ForegroundColor Yellow
+        } else {
+            $content = [System.IO.File]::ReadAllText($cf.FullName, [System.Text.Encoding]::UTF8)
+            $appendBuffer += "`n`n" + $content + "`n`n---`n"
+            Write-Host "✓ Menyisipkan modul: $headerTitle" -ForegroundColor Green
+            $addedCount++
+        }
+    }
+
+    if ($addedCount -gt 0) {
+        $banner = @"
+
+---
+
+<!-- ===================================================================== -->
+<!-- UNIVERSAL SAFETY GUARDRAILS & AI BEHAVIORAL STANDARDS                 -->
+<!-- Disisipkan otomatis oleh agent-blueprint (Safe Append Mode)           -->
+<!-- Tanggal: $((Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))                              -->
+<!-- ===================================================================== -->
+"@
+        [System.IO.File]::AppendAllText($TargetFile, $banner + $appendBuffer, [System.Text.Encoding]::UTF8)
+        Write-Host "✓ Berhasil menyisipkan $addedCount modul guardrails baru (100% aturan lama tetap utuh)." -ForegroundColor Green
+    } else {
+        Write-Host "ℹ️ Seluruh modul guardrails sudah lengkap di AGENTS.md (tidak ada yang perlu diubah)." -ForegroundColor Blue
+    }
+}
+
 $PreservedKnowledge = $null
 
 if ((Test-Path $OutputFile) -and (-not $Force)) {
-    if ($Sync) {
-        $existingChoice = "1"
-    } else {
-        Write-Host "⚠️ Terdeteksi file AGENTS.md sudah ada di: $OutputFile" -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "Pilih tindakan yang diinginkan:" -ForegroundColor White
-        Write-Host "  1) Smart Sync: Update Core Rules & Profil, pertahankan Project Knowledge lama (Rekomendasi)" -ForegroundColor Green
-        Write-Host "  2) Backup AGENTS.md lama & Ganti total dengan Blueprint baru" -ForegroundColor Cyan
-        Write-Host "  3) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md lama apa adanya)" -ForegroundColor Yellow
-        Write-Host "  4) Batal" -ForegroundColor Red
-        Write-Host ""
-        $existingChoice = Read-Host "Masukkan pilihan [1-4] (default: 1)"
-        if ([string]::IsNullOrWhiteSpace($existingChoice)) { $existingChoice = "1" }
-    }
+    $existingContent = [System.IO.File]::ReadAllText($OutputFile, [System.Text.Encoding]::UTF8)
+    $isBlueprint = $existingContent.Contains("Source Blueprint: agent-blueprint") -or $existingContent.Contains("PROJECT-SPECIFIC KNOWLEDGE")
 
-    switch ($existingChoice) {
-        "1" {
-            $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
-            $backupFile = "$OutputFile.bak.$timestamp"
-            Copy-Item -Path $OutputFile -Destination $backupFile -Force
-            Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+    if ($Append) {
+        $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+        $backupFile = "$OutputFile.bak.$timestamp"
+        Copy-Item -Path $OutputFile -Destination $backupFile -Force
+        Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+        Safe-Append-Guardrails -TargetFile $OutputFile -BlueprintDirectory $BlueprintDir
+        $SkipGenerate = $true
+    } elseif ($Sync) {
+        $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+        $backupFile = "$OutputFile.bak.$timestamp"
+        Copy-Item -Path $OutputFile -Destination $backupFile -Force
+        Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+
+        if ($isBlueprint) {
             $PreservedKnowledge = Extract-ProjectKnowledge $backupFile
             if ($PreservedKnowledge) {
                 Write-Host "ℹ️ Mendeteksi dan mempertahankan Project-Specific Knowledge dari file lama..." -ForegroundColor Blue
             }
             $SkipGenerate = $false
-        }
-        "2" {
-            $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
-            $backupFile = "$OutputFile.bak.$timestamp"
-            Copy-Item -Path $OutputFile -Destination $backupFile -Force
-            Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
-            $PreservedKnowledge = $null
-            $SkipGenerate = $false
-        }
-        "3" {
-            Write-Host "ℹ️ Mempertahankan isi AGENTS.md yang sudah ada..." -ForegroundColor Blue
+        } else {
+            Write-Host "ℹ️ Mendeteksi AGENTS.md kustom. Melakukan Safe Append agar seluruh aturan lama 100% utuh..." -ForegroundColor Blue
+            Safe-Append-Guardrails -TargetFile $OutputFile -BlueprintDirectory $BlueprintDir
             $SkipGenerate = $true
         }
-        Default {
-            Write-Host "Operasi dibatalkan." -ForegroundColor Blue
-            exit 0
+    } else {
+        if (-not $isBlueprint) {
+            Write-Host "⚠️ Terdeteksi file AGENTS.md kustom (memuat aturan spesifik project ini)." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "Pilih tindakan yang diinginkan:" -ForegroundColor White
+            Write-Host "  1) Safe Append: Sisipkan Guardrails & Karpathy di akhir file (100% aturan lama AMAN & UTUH) [Rekomendasi]" -ForegroundColor Green
+            Write-Host "  2) Smart Wrap: Jadikan seluruh aturan lama sebagai Project Knowledge di bawah Core Blueprint" -ForegroundColor Cyan
+            Write-Host "  3) Backup AGENTS.md lama & Ganti total dengan Blueprint baru" -ForegroundColor Red
+            Write-Host "  4) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md apa adanya)" -ForegroundColor Yellow
+            Write-Host "  5) Batal" -ForegroundColor DarkGray
+            Write-Host ""
+            $existingChoice = Read-Host "Masukkan pilihan [1-5] (default: 1)"
+            if ([string]::IsNullOrWhiteSpace($existingChoice)) { $existingChoice = "1" }
+
+            switch ($existingChoice) {
+                "1" {
+                    $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+                    $backupFile = "$OutputFile.bak.$timestamp"
+                    Copy-Item -Path $OutputFile -Destination $backupFile -Force
+                    Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+                    Safe-Append-Guardrails -TargetFile $OutputFile -BlueprintDirectory $BlueprintDir
+                    $SkipGenerate = $true
+                }
+                "2" {
+                    $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+                    $backupFile = "$OutputFile.bak.$timestamp"
+                    Copy-Item -Path $OutputFile -Destination $backupFile -Force
+                    Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+                    $PreservedKnowledge = [System.IO.File]::ReadAllText($backupFile, [System.Text.Encoding]::UTF8)
+                    Write-Host "ℹ️ Membungkus seluruh aturan lama ke bagian Project Knowledge..." -ForegroundColor Blue
+                    $SkipGenerate = $false
+                }
+                "3" {
+                    $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+                    $backupFile = "$OutputFile.bak.$timestamp"
+                    Copy-Item -Path $OutputFile -Destination $backupFile -Force
+                    Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+                    $PreservedKnowledge = $null
+                    $SkipGenerate = $false
+                }
+                "4" {
+                    Write-Host "ℹ️ Mempertahankan isi AGENTS.md yang sudah ada..." -ForegroundColor Blue
+                    $SkipGenerate = $true
+                }
+                Default {
+                    Write-Host "Operasi dibatalkan." -ForegroundColor Blue
+                    exit 0
+                }
+            }
+        } else {
+            Write-Host "⚠️ Terdeteksi file AGENTS.md (format agent-blueprint)." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "Pilih tindakan yang diinginkan:" -ForegroundColor White
+            Write-Host "  1) Smart Sync: Update Core Rules & Profil, pertahankan Project Knowledge lama [Rekomendasi]" -ForegroundColor Green
+            Write-Host "  2) Safe Append: Hanya sisipkan modul guardrails yang belum ada (tanpa rewrite)" -ForegroundColor Cyan
+            Write-Host "  3) Backup AGENTS.md lama & Ganti total dengan Blueprint baru" -ForegroundColor Red
+            Write-Host "  4) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md apa adanya)" -ForegroundColor Yellow
+            Write-Host "  5) Batal" -ForegroundColor DarkGray
+            Write-Host ""
+            $existingChoice = Read-Host "Masukkan pilihan [1-5] (default: 1)"
+            if ([string]::IsNullOrWhiteSpace($existingChoice)) { $existingChoice = "1" }
+
+            switch ($existingChoice) {
+                "1" {
+                    $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+                    $backupFile = "$OutputFile.bak.$timestamp"
+                    Copy-Item -Path $OutputFile -Destination $backupFile -Force
+                    Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+                    $PreservedKnowledge = Extract-ProjectKnowledge $backupFile
+                    if ($PreservedKnowledge) {
+                        Write-Host "ℹ️ Mendeteksi dan mempertahankan Project-Specific Knowledge dari file lama..." -ForegroundColor Blue
+                    }
+                    $SkipGenerate = $false
+                }
+                "2" {
+                    $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+                    $backupFile = "$OutputFile.bak.$timestamp"
+                    Copy-Item -Path $OutputFile -Destination $backupFile -Force
+                    Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+                    Safe-Append-Guardrails -TargetFile $OutputFile -BlueprintDirectory $BlueprintDir
+                    $SkipGenerate = $true
+                }
+                "3" {
+                    $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+                    $backupFile = "$OutputFile.bak.$timestamp"
+                    Copy-Item -Path $OutputFile -Destination $backupFile -Force
+                    Write-Host "✓ File lama telah di-backup ke: $backupFile" -ForegroundColor Green
+                    $PreservedKnowledge = $null
+                    $SkipGenerate = $false
+                }
+                "4" {
+                    Write-Host "ℹ️ Mempertahankan isi AGENTS.md yang sudah ada..." -ForegroundColor Blue
+                    $SkipGenerate = $true
+                }
+                Default {
+                    Write-Host "Operasi dibatalkan." -ForegroundColor Blue
+                    exit 0
+                }
+            }
         }
     }
 }
@@ -209,7 +339,7 @@ Dokumen ini memuat standar baku arsitektur, safety guardrails, dan protokol kerj
     [System.IO.File]::WriteAllText($OutputFile, $Header, [System.Text.Encoding]::UTF8)
 
     # 2. Append Core Templates (01 sampai 05)
-    $CoreFiles = Get-ChildItem -Path (Join-Path $BlueprintDir "templates\core") -Filter "[0-5]*.md" | Sort-Object Name
+    $CoreFiles = Get-ChildItem -Path (Join-Path $BlueprintDir "templates\core") -Filter "0[1-5]*.md" | Sort-Object Name
     foreach ($cf in $CoreFiles) {
         $content = [System.IO.File]::ReadAllText($cf.FullName, [System.Text.Encoding]::UTF8)
         [System.IO.File]::AppendAllText($OutputFile, "`n" + $content + "`n`n---`n", [System.Text.Encoding]::UTF8)
