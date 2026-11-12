@@ -21,6 +21,7 @@ Tolong lakukan audit sinkronisasi berikut:
    - *SOP Inspect Definition First*: Wajib membaca definisi fungsi/helper sebelum memanggilnya.
    - *Scope Lock*: Dilarang mass reformatting atau mengubah file di luar tiket.
    - *Anti-Slop Code Hygiene*: Dilarang menulis komentar redundan, over-engineering 1 pemanggil, atau dead boilerplate.
+   - *Karpathy Guidelines (AI Behavioral Standards)*: Wajib menerapkan 4 pilar Karpathy: Think Before Coding (ungkapkan asumsi secara eksplisit, jangan tebak sendiri), Simplicity First (larangan keras over-engineering / abstraksi spekulatif), Surgical Changes (hanya sentuh yang diminta & bersihkan orphan sendiri), dan Goal-Driven Execution (verifikasi bertahap).
    - *Security & Injection Prevention*: Wajib parameterized queries/ORM, boundary validation, dan dilarang leak internal stack traces.
    - *Hot-Spot Append-Only*: Router, DI container, dan i18n hanya boleh di-append, jangan diacak urutannya.
    - *Jika ada prinsip di atas yang belum tercantum, tambahkan ke dalam `AGENTS.md` secara rapi.*

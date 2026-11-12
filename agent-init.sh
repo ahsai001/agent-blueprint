@@ -27,6 +27,7 @@ BLUEPRINT_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 TARGET_DIR="$(pwd)"
 PROFILE=""
 FORCE=false
+SMART_SYNC=false
 
 print_banner() {
   echo -e "${CYAN}${BOLD}"
@@ -45,7 +46,8 @@ show_help() {
   echo -e "${BOLD}OPSI:${NC}"
   echo "  -p, --profile <name>   Profil stack: flutter, codeigniter, laravel, dotnet, nodejs, python, go, general"
   echo "  -t, --target <path>    Direktori project target (default: direktori saat ini)"
-  echo "  -f, --force            Overwrite jika file AGENTS.md sudah ada"
+  echo "  -s, --sync             Smart Sync: update Core Rules & Profil, pertahankan Project Knowledge lama"
+  echo "  -f, --force            Overwrite total jika file AGENTS.md sudah ada"
   echo "  -h, --help             Tampilkan bantuan ini"
   echo ""
   echo -e "${BOLD}CONTOH:${NC}"
@@ -67,6 +69,10 @@ while [[ $# -gt 0 ]]; do
     -t|--target)
       TARGET_DIR="$2"
       shift 2
+      ;;
+    -s|--sync)
+      SMART_SYNC=true
+      shift
       ;;
     -f|--force)
       FORCE=true
@@ -154,27 +160,71 @@ fi
 
 OUTPUT_FILE="$TARGET_DIR/AGENTS.md"
 
+# Fungsi ekstraksi Project-Specific Knowledge dari AGENTS.md lama
+extract_knowledge() {
+  local file="$1"
+  local line_num=""
+  if grep -q "<!-- BAGIAN INI DIISI & DIPERBARUI" "$file" 2>/dev/null; then
+    local anchor_line
+    anchor_line=$(grep -n "<!-- BAGIAN INI DIISI & DIPERBARUI" "$file" | head -n 1 | cut -d: -f1)
+    if [ "$anchor_line" -gt 1 ]; then
+      local prev_line=$((anchor_line - 1))
+      if sed -n "${prev_line}p" "$file" | grep -q "^<!-- ==="; then
+        line_num=$prev_line
+      else
+        line_num=$anchor_line
+      fi
+    else
+      line_num=$anchor_line
+    fi
+  elif grep -q "# PROJECT-SPECIFIC KNOWLEDGE" "$file" 2>/dev/null; then
+    line_num=$(grep -n "# PROJECT-SPECIFIC KNOWLEDGE" "$file" | head -n 1 | cut -d: -f1)
+  fi
+
+  if [ -n "$line_num" ]; then
+    tail -n +"$line_num" "$file"
+  fi
+}
+
+PRESERVED_KNOWLEDGE=""
+
 if [ -f "$OUTPUT_FILE" ] && [ "$FORCE" = false ]; then
-  echo -e "${YELLOW}⚠️  Terdeteksi file AGENTS.md sudah ada di: $OUTPUT_FILE${NC}"
-  echo ""
-  echo "Pilih tindakan yang diinginkan:"
-  echo "  1) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md lama apa adanya)"
-  echo "  2) Backup AGENTS.md lama & Ganti dengan Blueprint baru"
-  echo "  3) Batal"
-  echo ""
-  read -rp "Masukkan pilihan [1-3] (default: 1): " existing_choice
-  existing_choice="${existing_choice:-1}"
+  if [ "$SMART_SYNC" = true ]; then
+    existing_choice=1
+  else
+    echo -e "${YELLOW}⚠️  Terdeteksi file AGENTS.md sudah ada di: $OUTPUT_FILE${NC}"
+    echo ""
+    echo "Pilih tindakan yang diinginkan:"
+    echo "  1) Smart Sync: Update Core Rules & Profil, pertahankan Project Knowledge lama (Rekomendasi)"
+    echo "  2) Backup AGENTS.md lama & Ganti total dengan Blueprint baru"
+    echo "  3) Pasang Symlinks & Git Hooks saja (Pertahankan AGENTS.md lama apa adanya)"
+    echo "  4) Batal"
+    echo ""
+    read -rp "Masukkan pilihan [1-4] (default: 1): " existing_choice
+    existing_choice="${existing_choice:-1}"
+  fi
 
   case $existing_choice in
     1)
-      echo -e "${BLUE}ℹ️  Mempertahankan isi AGENTS.md yang sudah ada...${NC}"
-      SKIP_GENERATE_AGENTS=true
+      BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+      cp "$OUTPUT_FILE" "$BACKUP_FILE"
+      echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+      PRESERVED_KNOWLEDGE=$(extract_knowledge "$BACKUP_FILE")
+      if [ -n "$PRESERVED_KNOWLEDGE" ]; then
+        echo -e "${BLUE}ℹ️  Mendeteksi dan mempertahankan Project-Specific Knowledge dari file lama...${NC}"
+      fi
+      SKIP_GENERATE_AGENTS=false
       ;;
     2)
       BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
       cp "$OUTPUT_FILE" "$BACKUP_FILE"
       echo -e "${GREEN}✓ File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+      PRESERVED_KNOWLEDGE=""
       SKIP_GENERATE_AGENTS=false
+      ;;
+    3)
+      echo -e "${BLUE}ℹ️  Mempertahankan isi AGENTS.md yang sudah ada...${NC}"
+      SKIP_GENERATE_AGENTS=true
       ;;
     *)
       echo -e "${BLUE}Operasi dibatalkan.${NC}"
@@ -218,8 +268,13 @@ EOF
   echo "" >> "$OUTPUT_FILE"
   echo "---" >> "$OUTPUT_FILE"
 
-  # 4. Append Project-Specific Knowledge Registry (untuk diisi Agent saat onboarding)
-  if [ -f "$BLUEPRINT_DIR/templates/core/06-project-knowledge.md" ]; then
+  # 4. Append Project-Specific Knowledge Registry
+  if [ -n "$PRESERVED_KNOWLEDGE" ]; then
+    echo "" >> "$OUTPUT_FILE"
+    echo "$PRESERVED_KNOWLEDGE" >> "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+    echo -e "${GREEN}✓ Project-Specific Knowledge lama berhasil di-merge ke AGENTS.md baru!${NC}"
+  elif [ -f "$BLUEPRINT_DIR/templates/core/06-project-knowledge.md" ]; then
     echo "" >> "$OUTPUT_FILE"
     cat "$BLUEPRINT_DIR/templates/core/06-project-knowledge.md" >> "$OUTPUT_FILE"
     echo "" >> "$OUTPUT_FILE"

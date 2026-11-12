@@ -64,6 +64,9 @@ agent-init -p dotnet       # untuk .NET / C#
 agent-init -p nodejs       # untuk Node.js / NestJS / Express
 agent-init -p python       # untuk Python (FastAPI / Django / Flask)
 agent-init -p go           # untuk Go / Golang
+
+# Update / Sinkronisasi project existing tanpa menghapus custom knowledge:
+agent-init -s              # Smart Sync (pertahankan Project Knowledge lama)
 ```
 
 #### 3. Onboarding Awal:
