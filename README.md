@@ -65,9 +65,8 @@ agent-init -p nodejs       # untuk Node.js / NestJS / Express
 agent-init -p python       # untuk Python (FastAPI / Django / Flask)
 agent-init -p go           # untuk Go / Golang
 
-# Update / Sinkronisasi project existing (100% aman untuk project kustom):
-agent-init -s              # Smart Sync (auto Safe Append jika file kustom)
-agent-init -a              # Safe Append (sisipkan Guardrails baru di akhir, 0 rule terhapus)
+# Update / Sinkronisasi project existing (100% aman, 0 aturan terhapus):
+agent-init -s              # Smart Sync: sisipkan Guardrails & Karpathy baru tanpa ubah aturan lama
 ```
 
 #### 3. Onboarding Awal:
