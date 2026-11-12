@@ -327,11 +327,35 @@ if (Test-Path $GitDir) {
 
 Write-Host ""
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "🎉 Inisialisasi Berhasil!" -ForegroundColor Green
-Write-Host "Project Anda sekarang terlindungi oleh guardrails standar profesional."
-Write-Host ""
-Write-Host "Langkah Selanjutnya bersama AI Agent Anda:" -ForegroundColor White
-Write-Host "1. Buka project ini di Antigravity / Cursor / Claude / Windsurf."
-Write-Host "2. Berikan instruksi onboarding awal ke Agent:"
-Write-Host "   `"Tolong baca AGENTS.md dan audit struktur project ini sebelum mulai bekerja.`"" -ForegroundColor Yellow
+if ($SkipGenerate) {
+    Write-Host "🎉 Smart Sync Berhasil!" -ForegroundColor Green
+    Write-Host "Project Anda sekarang terlindungi oleh guardrails & standar Karpathy terbaru."
+    Write-Host "Seluruh aturan kustom lama Anda tetap 100% utuh & aman."
+} else {
+    Write-Host "🎉 Inisialisasi Berhasil!" -ForegroundColor Green
+    Write-Host "Project Anda sekarang terlindungi oleh guardrails standar profesional."
+    Write-Host ""
+    Write-Host "Langkah Selanjutnya bersama AI Agent Anda:" -ForegroundColor White
+    Write-Host "Buka project ini di Antigravity / Cursor / Claude / Windsurf,"
+    Write-Host "lalu copy-paste prompt onboarding di bawah ini ke chat AI:"
+    Write-Host ""
+
+    $PromptFile = Join-Path $BlueprintDir "prompts\ONBOARDING_AGENT.md"
+    if (Test-Path $PromptFile) {
+        $content = [System.IO.File]::ReadAllText($PromptFile, [System.Text.Encoding]::UTF8)
+        $startIdx = $content.IndexOf("```markdown")
+        if ($startIdx -ne -1) {
+            $startIdx += "```markdown".Length
+            $endIdx = $content.IndexOf("```", $startIdx)
+            if ($endIdx -ne -1) {
+                $onboardingPrompt = $content.Substring($startIdx, $endIdx - $startIdx).Trim()
+                Write-Host "---------------------------------------------------------------" -ForegroundColor Yellow
+                Write-Host $onboardingPrompt -ForegroundColor Yellow
+                Write-Host "---------------------------------------------------------------" -ForegroundColor Yellow
+            }
+        }
+    } else {
+        Write-Host "   `"Tolong baca AGENTS.md dan audit struktur project ini sebelum mulai bekerja.`"" -ForegroundColor Yellow
+    }
+}
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan

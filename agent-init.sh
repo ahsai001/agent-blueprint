@@ -363,11 +363,26 @@ fi
 
 echo ""
 echo -e "${CYAN}${BOLD}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}${BOLD}🎉 Inisialisasi Berhasil!${NC}"
-echo -e "Project Anda sekarang terlindungi oleh guardrails standar profesional."
-echo ""
-echo -e "${BOLD}Langkah Selanjutnya bersama AI Agent Anda:${NC}"
-echo "1. Buka project ini di Antigravity / Cursor / Claude / Windsurf."
-echo "2. Berikan instruksi onboarding awal ke Agent:"
-echo -e "   ${YELLOW}\"Tolong baca AGENTS.md dan audit struktur project ini sebelum mulai bekerja.\"${NC}"
+if [ "$SKIP_GENERATE_AGENTS" = true ]; then
+  echo -e "${GREEN}${BOLD}🎉 Smart Sync Berhasil!${NC}"
+  echo -e "Project Anda sekarang terlindungi oleh guardrails & standar Karpathy terbaru."
+  echo -e "Seluruh aturan kustom lama Anda tetap 100% utuh & aman."
+else
+  echo -e "${GREEN}${BOLD}🎉 Inisialisasi Berhasil!${NC}"
+  echo -e "Project Anda sekarang terlindungi oleh guardrails standar profesional."
+  echo ""
+  echo -e "${BOLD}Langkah Selanjutnya bersama AI Agent Anda:${NC}"
+  echo "Buka project ini di Antigravity / Cursor / Claude / Windsurf,"
+  echo "lalu copy-paste prompt onboarding di bawah ini ke chat AI:"
+  echo ""
+  PROMPT_FILE="$BLUEPRINT_DIR/prompts/ONBOARDING_AGENT.md"
+  if [ -f "$PROMPT_FILE" ]; then
+    EXTRACTED_PROMPT=$(sed -n '/```markdown/,/```/p' "$PROMPT_FILE" | sed '1d;$d')
+    echo -e "${YELLOW}---------------------------------------------------------------${NC}"
+    echo -e "${YELLOW}${EXTRACTED_PROMPT}${NC}"
+    echo -e "${YELLOW}---------------------------------------------------------------${NC}"
+  else
+    echo -e "   ${YELLOW}\"Tolong baca AGENTS.md dan audit struktur project ini sebelum mulai bekerja.\"${NC}"
+  fi
+fi
 echo -e "${CYAN}${BOLD}═══════════════════════════════════════════════════════════════${NC}"
