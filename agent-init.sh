@@ -272,6 +272,12 @@ if [ -f "$OUTPUT_FILE" ] && [ "$FORCE" = false ]; then
       ;;
   esac
 else
+  # Jika file sudah ada tapi mode FORCE aktif, tetap buat backup pengaman!
+  if [ -f "$OUTPUT_FILE" ] && [ "$FORCE" = true ]; then
+    BACKUP_FILE="${OUTPUT_FILE}.bak.$(date +%Y%m%d%H%M%S)"
+    cp "$OUTPUT_FILE" "$BACKUP_FILE"
+    echo -e "${YELLOW}⚠️  Mode Force: File lama telah di-backup ke: ${BACKUP_FILE}${NC}"
+  fi
   SKIP_GENERATE_AGENTS=false
 fi
 

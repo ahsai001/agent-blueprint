@@ -228,6 +228,14 @@ if ((Test-Path $OutputFile) -and (-not $Force)) {
             exit 0
         }
     }
+} else {
+    # Jika file sudah ada tapi mode Force aktif, tetap buat backup pengaman!
+    if ((Test-Path $OutputFile) -and $Force) {
+        $timestamp = (Get-Date).ToString("yyyyMMddHHmmss")
+        $backupFile = "$OutputFile.bak.$timestamp"
+        Copy-Item -Path $OutputFile -Destination $backupFile -Force
+        Write-Host "⚠️ Mode Force: File lama telah di-backup ke: $backupFile" -ForegroundColor Yellow
+    }
 }
 
 if (-not $SkipGenerate) {

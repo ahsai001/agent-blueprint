@@ -30,9 +30,10 @@ Tolong implementasikan repo blueprint ini ke project ini: https://github.com/ahs
 >   5. Audit codebase dan isi section `# PROJECT-SPECIFIC KNOWLEDGE & REGISTRY` dengan fakta hasil audit nyata.
 >
 > * **KASUS B — Project EXISTING (Sudah ada `AGENTS.md` kustom)**:
->   1. **DILARANG KERAS MENGHAPUS / ME-REWRITE** aturan kustom yang sudah ada sebelumnya!
->   2. Lakukan **Safe Append**: Pertahankan 100% teks aturan lama di bagian atas, dan hanya sisipkan modul guardrails (seperti Karpathy Guidelines atau Core Safety) yang belum ada di bagian akhir file.
->   3. Pastikan kelima symlink di atas dan Git pre-commit hook sudah terpasang.
+>   1. **Buat file backup pengaman**: Salin file lama menjadi `AGENTS.md.bak.<timestamp>` sebelum menyentuh file.
+>   2. **DILARANG KERAS MENGHAPUS / ME-REWRITE** aturan kustom yang sudah ada sebelumnya!
+>   3. Lakukan **Safe Append**: Pertahankan 100% teks aturan lama di bagian atas, dan hanya sisipkan modul guardrails (seperti Karpathy Guidelines atau Core Safety) yang belum ada di bagian akhir file.
+>   4. Pastikan kelima symlink di atas dan Git pre-commit hook sudah terpasang.
 
 ---
 
