@@ -39,3 +39,20 @@ Aturan ini mencegah kode rapuh (*brittle code*), *over-engineering*, dan boilerp
 - Dilarang menulis nilai hex color atau pixel padding secara acak di dalam komponen/widget.
   - Gunakan Design Tokens, Global Theme (`Theme.of(context).colorScheme`, CSS Variables, Tailwind classes terdaftar).
 - Jika ada warna baru yang belum terdaftar di tema, diskusikan atau daftarkan ke file palet warna sentral terlebih dahulu.
+
+---
+
+### 5. Kontrak Data & Serialisasi (Raw Data Standard)
+- **Backend API WAJIB Mengirim Nilai Mentah (*Raw Data*)**:
+  - Dilarang keras melakukan pemformatan tampilan visual di sisi backend (seperti menambahkan simbol `"Rp"`, singkatan `"1.5 M"`, unit `"12 unit"`, atau tanggal terformat `"24 Oktober 2026"`).
+  - **Data Angka (Number / Currency / Percentage)**: Wajib dikirimkan sebagai tipe data numerik asli (`int`, `float`, `double`, atau string numerik presisi tinggi murni). Dilarang menambahkan separator ribuan (titik/koma), simbol mata uang, atau karakter `%` di dalam JSON payload.
+  - **Data Tanggal & Waktu (Date, DateTime, Period)**: Wajib dikirimkan dalam format standar internasional ISO / SQL standar:
+    - Tanggal (*Date*): `"YYYY-MM-DD"` (contoh: `"2026-10-24"`)
+    - Tanggal & Waktu (*DateTime*): `"YYYY-MM-DD HH:mm:ss"` atau ISO-8601 `"YYYY-MM-DDTHH:mm:ss"` (contoh: `"2026-10-24 14:30:00"`)
+    - Periode Bulan (*Month*): `"YYYY-MM"` (contoh: `"2026-10"`)
+    - Jam (*Time*): `"HH:mm:ss"` atau `"HH:mm"` (contoh: `"14:30"`)
+    - Dilarang memformat tanggal ke string lokal bahasa tertentu di backend.
+- **Tanggung Jawab Formatting Ada di Front End (Presentation Layer)**:
+  - Seluruh formatting tampilan (pemisah ribuan, format mata uang lokal, format tanggal terjemahan lokal `intl`) WAJIB dilakukan di layer Presentation Front End.
+- **Front End State & Entity Immutability**:
+  - Front End DILARANG menyimpan string yang sudah terformat di dalam State atau Entity. Simpan selalu nilai numerik/raw aslinya agar data tetap fleksibel untuk kalkulasi, formula chart, agregasi, dan sorting tabel.

@@ -22,14 +22,37 @@ application/ (CI3) atau app/ (CI4)
 
 ---
 
-### 2. Pola Operasi Write (ACID Transactions)
+### 2. Standarisasi Response Data API (Raw Data Tanpa Formatting)
+Backend API **WAJIB** mengirimkan data angka dan tanggal/waktu dalam bentuk nilai mentah (*raw data*) dengan tipe data aslinya. **DILARANG** melakukan pemformatan visual tampilan di sisi backend:
+- **Data Angka (Number / Float / Currency / Percentage)**:
+  - Kirimkan sebagai tipe numerik asli (`int`, `float`, atau `numeric` string murni):
+    - Contoh **BENAR**: `"total_cost": 1500000.50`, `"qty": 12.0`, `"percentage": 45.2`
+    - Contoh **SALAH**: `"total_cost": "Rp 1.500.000"`, `"total_cost": "1.5 M"`, `"qty": "12 unit"`, `"percentage": "45.2%"`
+  - Dilarang menambahkan separator ribuan (titik/koma), simbol mata uang, satuan, atau singkatan di dalam response JSON.
+- **Data Tanggal dan Waktu (Date, DateTime, Period)**:
+  - Tanggal (*Date*): `"YYYY-MM-DD"` (contoh: `"2026-10-24"`)
+  - Tanggal & Waktu (*DateTime*): `"YYYY-MM-DD HH:mm:ss"` atau ISO-8601
+  - Periode Bulan (*Month*): `"YYYY-MM"`
+  - Dilarang memformat tanggal ke dalam string bahasa/lokal tertentu (seperti `"24 Oktober 2026"`). Seluruh lokalisasi tampilan tanggal adalah tanggung jawab Front End.
+
+---
+
+### 3. Pola Operasi Write (ACID Transactions)
 - Setiap operasi yang melibatkan beberapa query mutasi (multi-write `INSERT`/`UPDATE`/`DELETE`) **WAJIB** dibungkus dalam database transaction di Service layer.
 - Gunakan transaction wrapper yang disediakan framework atau helper (contoh: `process_data_with_transaction` / `process_json_with_transaction` jika ada).
 - **Hindari Pitfall Commit**: Pada MySQL/CI, statement `COMMIT;` mereset counter affected rows menjadi `0`. Jangan mengecek status eksekusi menggunakan affected rows setelah commit dijalankan.
 
 ---
 
-### 3. Standarisasi Query & Prepared Statements
+### 4. Standarisasi Layout & View CMS/Admin Panel (Jika Menggunakan Blade/HTML View)
+- **Aturan Tag `<div>` Layout & Posisi Footer**:
+  - Selalu pastikan tag `<div>` penutup wrapper konten seimbang. Kekurangan satu tag `</div>` penutup pada konten view dapat menyebabkan footer/teks copyright terdorong dan bergeser ke sebelah kanan konten, merusak layout halaman.
+- **Tabel Responsif & Mouse Scroll (`table-responsive`)**:
+  - Gunakan wrapper scrollable yang memiliki overflow style yang tepat agar scrolling mouse tidak macet atau keras saat kursor hover di atas tabel data yang lebar.
+
+---
+
+### 5. Standarisasi Query & Prepared Statements
 - Dilarang keras menggabungkan variabel input user langsung ke dalam string SQL (*string concatenation*). Wajib menggunakan query binding / prepared statement:
   ```php
   $this->db->query("SELECT * FROM users WHERE status = ? AND region_id = ?", [$status, $regionId]);
@@ -41,7 +64,7 @@ application/ (CI3) atau app/ (CI4)
 
 ---
 
-### 4. Multi-Tenancy & Row-Level Security (Filter 'ALL')
+### 6. Multi-Tenancy & Row-Level Security (Filter 'ALL')
 - **Arti Filter 'ALL'**: Di sisi user/klien, pilihan "All" atau parameter kosong **BUKAN** berarti mengambil seluruh data database tanpa filter.
 - Backend wajib membatasi query berdasarkan identitas user (`kduser`, company ID, atau site yang terdaftar di database user).
 - **Multi-Code Parsing**: Dukung filter dengan nilai koma (contoh: `"site": "SITE_A,SITE_B"`) dan sanitasi menggunakan klausa `IN (?, ?, ...)`.
@@ -49,7 +72,7 @@ application/ (CI3) atau app/ (CI4)
 
 ---
 
-### 5. Checklist Pendaftaran Endpoint Baru (RBAC Lifecycle)
+### 7. Checklist Pendaftaran Endpoint Baru (RBAC Lifecycle)
 Setelah membuat fungsi API baru, pastikan alur akses terdaftar lengkap:
 ```
 Buat endpoint API di Controller
@@ -67,7 +90,7 @@ Buat endpoint API di Controller
 
 ---
 
-### 6. Verification Commands (Quality Gate)
+### 8. Verification Commands (Quality Gate)
 ```bash
 # Validasi syntax PHP untuk semua file yang diubah
 php -l path/to/changed_file.php

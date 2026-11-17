@@ -15,6 +15,8 @@ File sentral adalah file yang hampir selalu dimodifikasi setiap kali ada fitur b
 ### 2. Dual-Mirroring Verification (Simetri File Konfigurasi & Bahasa)
 - **Konfigurasi Environment**: Setiap menambahkan environment variable baru di kode atau `.env`, WAJIB menambahkan variabel dummy yang sama di `.env.example` beserta komentar penjelasannya.
 - **Translasi Bahasa (i18n)**: Jika project menggunakan sistem multi-bahasa, setiap penambahan key baru (misal di `id.json`) WAJIB ditambahkan padanan terjemahannya di file bahasa lainnya (misal `en.json`).
+  - **Pemisahan Ketat Bahasa**: `id.json` KHUSUS berisi teks Bahasa Indonesia murni (dilarang membiarkan string bahasa Inggris di `id.json`). Sebaliknya, `en.json` KHUSUS berisi teks Bahasa Inggris murni.
+  - **Modularitas & Anti-Duplikasi Key**: Key dalam file translasi WAJIB bersifat modular dan dapat digunakan ulang lintas fitur. Dilarang membuat key berulang untuk makna yang identik (contoh: gunakan key `"date"` untuk semua label tanggal; jangan menduplikasi `"filter_date"`, `"table_date"`, dsb jika maknanya sama).
 
 ---
 

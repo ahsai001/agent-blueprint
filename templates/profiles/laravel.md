@@ -21,7 +21,8 @@ Panduan arsitektur dan kualitas kode untuk project Laravel.
 
 ### 2. Validasi & Serialisasi Response
 - **Selalu Gunakan FormRequest**: Dilarang melakukan validasi manual `$request->validate()` yang panjang di dalam method controller. Buat dedicated FormRequest class.
-- **API Resources**: Dilarang me-return raw Eloquent model secara langsung pada response API untuk mencegah kebocoran atribut sensitif (`password`, `remember_token`, dll.). Gunakan `JsonResource`.
+- **API Resources (DTO)**: Dilarang me-return raw Eloquent model secara langsung pada response API untuk mencegah kebocoran atribut sensitif (`password`, `remember_token`, dll.). Gunakan `JsonResource`.
+- **Kontrak Raw Data**: Pastikan `JsonResource` mengembalikan angka sebagai tipe numerik (`int`/`float`) dan tanggal dalam format ISO (`$this->created_at?->toISOString()`). Dilarang memformat currency/tanggal visual di dalam Resource.
 
 ---
 

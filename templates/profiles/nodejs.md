@@ -27,7 +27,7 @@ src/
 ### 2. TypeScript Strictness & Type Safety
 - **No `any` Policy**: Dilarang menggunakan tipe `any` tanpa alasan yang terdokumentasi jelas. Gunakan `unknown` jika tipe belum pasti, lalu lakukan type narrowing.
 - **Runtime Validation**: Gunakan schema validator runtime (seperti `zod`, `joi`, atau `class-validator`) untuk semua input request eksternal sebelum diproses oleh layer application.
-- **DTO Isolation**: Dilarang mengekspos raw database model ke luar presentation layer. Gunakan response DTO yang telah divalidasi.
+- **DTO Isolation & Kontrak Raw Data**: Dilarang mengekspos raw database model ke luar presentation layer. Gunakan response DTO yang telah divalidasi. Response DTO wajib mengembalikan data angka sebagai tipe numerik (`number`) dan tanggal/waktu dalam format ISO standar (`toISOString()`). Dilarang memformat visual currency/tanggal di layer DTO backend.
 
 ---
 
