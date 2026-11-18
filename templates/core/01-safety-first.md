@@ -4,10 +4,11 @@ Aturan ini berlaku mutlak untuk semua AI Agent di seluruh framework dan lingkung
 
 ---
 
-### 1. Database Safety & Destructive Action Safeguard
-- **Read-Only By Default**: Untuk operasi selain `SELECT` (`INSERT`, `UPDATE`, `DELETE`, `ALTER`, `DROP`, `TRUNCATE`, migrasi skema, dll.) pada database manapun, **DILARANG mengeksekusi langsung**.
-- **Mode Eksekusi**: Cukup buatkan script SQL terisolasi dan instruksikan kepada user, **KECUALI** jika user memberikan instruksi eksplisit dalam percakapan: *"Jalankan query ini ke database"* atau sejenisnya.
-- **Safety Review**: Selalu verifikasi klausa `WHERE` pada query mutasi. Dilarang menjalankan query `UPDATE` atau `DELETE` massal tanpa batasan kunci primer / foreign key spesifik.
+### 1. Strict Database Read-Only Policy (Mutlak Tanpa Pengecualian)
+- **Larangan Eksekusi Langsung Mutasi**: Untuk operasi selain `SELECT`, `SHOW`, `DESCRIBE`, `EXPLAIN`, dan inspeksi metadata katalog (`INSERT`, `UPDATE`, `DELETE`, `ALTER`, `DROP`, `TRUNCATE`, migrasi skema, `EXEC`/Stored Procedure, dll.) pada database manapun (MySQL, SQL Server, PostgreSQL, SQLite, dll.), **DILARANG KERAS mengeksekusi langsung**.
+- **Mode Script-Only (Wajib Manual oleh User)**: Cukup buatkan script SQL bersih terisolasi dan instruksikan kepada user untuk mereview dan mengeksekusinya secara manual di DBeaver, SSMS, atau tool GUI lainnya.
+- **Tanpa Pengecualian**: Larangan ini berlaku MUTLAK, bahkan jika user memberikan instruksi dalam chat seperti *"Jalankan query ini ke database"* atau *"Tolong eksekusi query ini"*. Agent WAJIB menolak eksekusi langsung dan mengarahkan user menjalankannya sendiri secara manual.
+- **Validasi Read-Only**: Gunakan tool verifikasi read-only `safe-sql-query` jika tersedia di sistem untuk pengujian atau inspeksi query baca.
 
 ---
 

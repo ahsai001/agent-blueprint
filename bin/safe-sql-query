@@ -1,0 +1,200 @@
+#!/usr/bin/env php
+<?php
+/**
+ * safe-sql-query
+ * Read-Only SQL Query Runner & Validator for Antigravity & Developers.
+ * Prevents any accidental or automated database mutations.
+ */
+
+// 1. Argument parsing
+$options = getopt("", ["db:", "sql:", "format::", "help"]);
+
+if (isset($options['help']) || !isset($options['db']) || !isset($options['sql'])) {
+    echo "Usage: safe-sql-query --db=<DATABASE_NAME> --sql=\"<SELECT_QUERY>\" [--format=json|table]\n";
+    echo "Example: safe-sql-query --db=PKAPROD --sql=\"SELECT TOP 5 * FROM ms_hse_accident_loc\"\n";
+    exit(1);
+}
+
+$targetDb = trim($options['db']);
+$rawSql = trim($options['sql']);
+$format = isset($options['format']) ? strtolower($options['format']) : 'table';
+
+// 2. Strict Read-Only Security Validation
+function validate_readonly_sql($sql) {
+    // Remove comments
+    $clean = preg_replace('/--.*$/m', '', $sql);
+    $clean = preg_replace('/\/\*.*?\*\//s', '', $clean);
+    $clean = trim($clean);
+
+    if (empty($clean)) {
+        return "Query is empty.";
+    }
+
+    // Must start with read-only keywords
+    if (!preg_match('/^(SELECT|WITH|SHOW|DESCRIBE|DESC|EXPLAIN)\b/i', $clean)) {
+        return "BLOCKED: Query must start with SELECT, WITH, SHOW, DESCRIBE, or EXPLAIN.";
+    }
+
+    // Forbidden mutating keywords
+    $forbiddenPatterns = [
+        '/\bINSERT\b/i' => 'INSERT',
+        '/\bUPDATE\b/i' => 'UPDATE',
+        '/\bDELETE\b/i' => 'DELETE',
+        '/\bDROP\b/i' => 'DROP',
+        '/\bALTER\b/i' => 'ALTER',
+        '/\bTRUNCATE\b/i' => 'TRUNCATE',
+        '/\bCREATE\b/i' => 'CREATE',
+        '/\bRENAME\b/i' => 'RENAME',
+        '/\bREPLACE\b/i' => 'REPLACE',
+        '/\bMERGE\b/i' => 'MERGE',
+        '/\bEXEC\b/i' => 'EXEC',
+        '/\bEXECUTE\b/i' => 'EXECUTE',
+        '/\bGRANT\b/i' => 'GRANT',
+        '/\bREVOKE\b/i' => 'REVOKE',
+        '/\bBACKUP\b/i' => 'BACKUP',
+        '/\bRESTORE\b/i' => 'RESTORE',
+        '/\bDBCC\b/i' => 'DBCC',
+        '/\bINTO\b/i' => 'INTO (SELECT INTO prohibited)',
+    ];
+
+    foreach ($forbiddenPatterns as $pattern => $keyword) {
+        if (preg_match($pattern, $clean)) {
+            return "BLOCKED: Mutation keyword detected: '{$keyword}'. Only read-only operations are permitted.";
+        }
+    }
+
+    return true;
+}
+
+$validation = validate_readonly_sql($rawSql);
+if ($validation !== true) {
+    fwrite(STDERR, "[SECURITY ERROR] " . $validation . "\n");
+    exit(2);
+}
+
+// 3. Resolve Database Connection Details
+function get_db_credentials($dbName) {
+    // Check if connecting to central MySQL
+    if (strtoupper($dbName) === 'SYSHABAPI' || strtoupper($dbName) === 'MYSQL') {
+        return [
+            'driver' => 'mysql',
+            'host' => '127.0.0.1',
+            'port' => 30600,
+            'user' => 'admin',
+            'pass' => 'admQwerty654#@!',
+            'dbname' => 'syshabapi'
+        ];
+    }
+
+    // Query MySQL client_db to resolve tenant credentials
+    $mysql = @new mysqli('127.0.0.1', 'admin', 'admQwerty654#@!', 'syshabapi', 30600);
+    if ($mysql->connect_error) {
+        // fallback to remote host if local port is not bound
+        $mysql = @new mysqli('api.syshab.com', 'aireader', 'Qwerty654#@!', 'syshabapi', 30600);
+        if ($mysql->connect_error) {
+            throw new Exception("Failed to connect to central syshabapi registry: " . $mysql->connect_error);
+        }
+    }
+
+    $stmt = $mysql->query("SELECT database_name, hostname, username, password, dbdriver FROM client_db");
+    while ($row = $stmt->fetch_assoc()) {
+        $db = base64_decode($row['database_name']);
+        if (strcasecmp($db, $dbName) === 0) {
+            return [
+                'driver' => $row['dbdriver'],
+                'host' => base64_decode($row['hostname']),
+                'port' => 1433,
+                'user' => base64_decode($row['username']),
+                'pass' => base64_decode($row['password']),
+                'dbname' => $db
+            ];
+        }
+    }
+
+    throw new Exception("Database '{$dbName}' not found in client_db registry.");
+}
+
+try {
+    $creds = get_db_credentials($targetDb);
+
+    if ($creds['driver'] === 'sqlsrv' || strpos($creds['driver'], 'sql') !== false && $creds['driver'] !== 'mysql') {
+        $dsn = "dblib:host={$creds['host']}:{$creds['port']};dbname={$creds['dbname']}";
+        $pdo = new PDO($dsn, $creds['user'], $creds['pass'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_TIMEOUT => 10
+        ]);
+
+        // Extra Defense: Start transaction and always rollback
+        $pdo->beginTransaction();
+        $stmt = $pdo->query($rawSql);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $pdo->rollBack();
+    } else {
+        $mysqli = new mysqli($creds['host'], $creds['user'], $creds['pass'], $creds['dbname'], $creds['port']);
+        if ($mysqli->connect_error) {
+            throw new Exception("MySQL connection failed: " . $mysqli->connect_error);
+        }
+        $res = $mysqli->query($rawSql);
+        if (!$res) {
+            throw new Exception("MySQL query error: " . $mysqli->error);
+        }
+        $results = $res->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // Output formatting
+    if ($format === 'json') {
+        echo json_encode($results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+    } else {
+        if (empty($results)) {
+            echo "(0 rows returned)\n";
+            exit(0);
+        }
+
+        $headers = array_keys($results[0]);
+        $widths = [];
+        foreach ($headers as $h) {
+            $widths[$h] = strlen($h);
+        }
+
+        // Limit display for console readability
+        $displayRows = array_slice($results, 0, 100);
+        foreach ($displayRows as $row) {
+            foreach ($headers as $h) {
+                $val = (string)($row[$h] ?? 'NULL');
+                if (strlen($val) > 40) {
+                    $val = substr($val, 0, 37) . '...';
+                }
+                $widths[$h] = max($widths[$h], strlen($val));
+            }
+        }
+
+        // Print header
+        $line = [];
+        foreach ($headers as $h) {
+            $line[] = str_pad($h, $widths[$h]);
+        }
+        echo implode(" | ", $line) . "\n";
+        echo str_repeat("-", array_sum($widths) + (count($headers) - 1) * 3) . "\n";
+
+        // Print rows
+        foreach ($displayRows as $row) {
+            $line = [];
+            foreach ($headers as $h) {
+                $val = (string)($row[$h] ?? 'NULL');
+                if (strlen($val) > 40) {
+                    $val = substr($val, 0, 37) . '...';
+                }
+                $line[] = str_pad($val, $widths[$h]);
+            }
+            echo implode(" | ", $line) . "\n";
+        }
+
+        if (count($results) > 100) {
+            echo "... (" . (count($results) - 100) . " more rows truncated for display)\n";
+        }
+        echo "\nTotal: " . count($results) . " rows\n";
+    }
+} catch (Exception $e) {
+    fwrite(STDERR, "[QUERY EXECUTION ERROR] " . $e->getMessage() . "\n");
+    exit(3);
+}

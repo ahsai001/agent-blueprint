@@ -47,6 +47,7 @@ show_help() {
   echo "  -p, --profile <name>   Profil stack: flutter, codeigniter, laravel, dotnet, nodejs, python, go, general"
   echo "  -t, --target <path>    Direktori project target (default: direktori saat ini)"
   echo "  -s, --sync             Smart Sync: sisipkan Guardrails & Karpathy baru (100% aturan lama AMAN & UTUH)"
+  echo "  -g, --global           Pasang pengaman database global & CLI tool ke seluruh AI Agent (~/.claude, ~/.codex, dll.)"
   echo "  -f, --force            Overwrite total jika file AGENTS.md sudah ada"
   echo "  -h, --help             Tampilkan bantuan ini"
   echo ""
@@ -74,6 +75,10 @@ while [[ $# -gt 0 ]]; do
     -s|--sync|-a|--append)
       SMART_SYNC=true
       shift
+      ;;
+    -g|--global)
+      "$BLUEPRINT_DIR/setup-global.sh"
+      exit 0
       ;;
     -f|--force)
       FORCE=true
