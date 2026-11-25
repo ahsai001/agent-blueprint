@@ -133,6 +133,7 @@ Sistem ini dirancang dengan prinsip **Hybrid (Script + AI Agent)**:
 6. **Scope Lock**: Dilarang me-reformat seluruh repo atau mengubah file di luar tiket yang ditugaskan.
 7. **Git Pre-commit Hook**: Otomatis menggagalkan commit jika ada file `.env`, private key SSH, atau fungsi debug tertinggal (`dd()`, `debugger;`).
 8. **On-Demand Security Audit Playbook**: Tersedia SOP audit keamanan lengkap di `prompts/SECURITY_AUDIT.md` untuk pentest mandiri sebelum rilis.
+9. **Systematic Debugging & Verification Before Completion**: Agent wajib mencari *root cause* sebelum memperbaiki bug (berhenti & evaluasi ulang jika 2–3 percobaan gagal) serta wajib menunjukkan bukti output verifikasi nyata (`test`/`build`/`lint`) setelah perubahan terakhir sebelum menyatakan tugas selesai.
 
 ---
 
