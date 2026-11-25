@@ -1,18 +1,27 @@
 #!/usr/bin/env bash
-# Git Pre-commit Hook: Universal Safety Guard
+# Git Pre-commit Hook: Universal Safety & Anti-Slop Quality Gate
 # Dipasang otomatis oleh agent-blueprint (agent-init)
+#
+# Env override (jika benar-benar disengaja):
+#   ALLOW_LARGE_COMMIT=1  -> lewati batas ukuran diff (default: 15 file / 500 baris baru)
+#   SKIP_STATIC_CHECK=1   -> lewati linter/analyzer otomatis
 
 set -e
 
-# Warna output
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
+BLUE='\033[0;34m'
 NC='\033[0m'
+
+MAX_STAGED_FILES="${MAX_STAGED_FILES:-15}"
+MAX_ADDED_LINES="${MAX_ADDED_LINES:-500}"
 
 echo "🔍 [agent-blueprint] Memeriksa staged files sebelum commit..."
 
+# ==============================================================================
 # 1. Cek file terlarang / credentials yang masuk ke git
+# ==============================================================================
 FORBIDDEN_FILES=(".env" ".env.local" "id_rsa" "credentials.json" ".pem")
 for f in "${FORBIDDEN_FILES[@]}"; do
     if git diff --cached --name-only | grep -E "(^|/)${f}$" > /dev/null; then
@@ -22,41 +31,133 @@ for f in "${FORBIDDEN_FILES[@]}"; do
     fi
 done
 
+# ==============================================================================
 # 2. Cek baris kunci rahasia / private key di dalam diff staged
+# ==============================================================================
 if git diff --cached | grep -E "BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY" > /dev/null; then
     echo -e "${RED}❌ ERROR: Terdeteksi PRIVATE KEY di dalam perubahan yang akan di-commit!${NC}"
     exit 1
 fi
 
-# 3. Cek sisa debug statements terlarang di kode yang di-stage
-# Cek dd(), var_dump(), debugger;, breakpoint(), pdb
-STAGED_CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(php|js|ts|dart|cs|py|go)$" || true)
+# ==============================================================================
+# 3. Diff-Size & Scope Guard (Anti-Bloat / Anti-Drive-by Refactoring)
+#    Mengecualikan lockfiles & generated files agar tidak false positive.
+# ==============================================================================
+if [ "${ALLOW_LARGE_COMMIT:-0}" != "1" ]; then
+    IGNORED_PATTERN='(^|[[:space:]]|/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|pubspec\.lock|composer\.lock|go\.sum|poetry\.lock|Cargo\.lock)$|\.(g|freezed|generated)\.[a-zA-Z]+$'
+    STAGED_COUNT=$( (git diff --cached --name-only --diff-filter=ACM | grep -Ev "$IGNORED_PATTERN" || true) | wc -l | tr -d ' ')
+    ADDED_LINES=$( (git diff --cached --numstat --diff-filter=ACM | grep -Ev "$IGNORED_PATTERN" || true) | awk '$1 ~ /^[0-9]+$/ { sum += $1 } END { print sum + 0 }')
+
+    if [ "$STAGED_COUNT" -gt "$MAX_STAGED_FILES" ] || [ "$ADDED_LINES" -gt "$MAX_ADDED_LINES" ]; then
+        echo -e "${RED}❌ ERROR [Anti-Bloat Guard]: Perubahan terlalu besar untuk 1 commit (${STAGED_COUNT} file, +${ADDED_LINES} baris).${NC}"
+        echo -e "${YELLOW}Batas default: maks ${MAX_STAGED_FILES} file dan +${MAX_ADDED_LINES} baris baru.${NC}"
+        echo -e "${YELLOW}Pecah commit agar terfokus, atau jalankan: ALLOW_LARGE_COMMIT=1 git commit ...${NC}"
+        exit 1
+    fi
+fi
+
+# ==============================================================================
+# 4. Cek sisa debug statements & AI-slop placeholders pada baris baru
+# ==============================================================================
+STAGED_CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(php|js|jsx|ts|tsx|dart|cs|py|go)$" || true)
 
 if [ -n "$STAGED_CODE_FILES" ]; then
-    for file in $STAGED_CODE_FILES; do
-        if [ -f "$file" ]; then
-            # Cek dd( atau var_dump( pada file PHP
-            if [[ "$file" =~ \.php$ ]]; then
-                if git diff --cached "$file" | grep -E "^\+[[:space:]]*(dd\(|var_dump\(|print_r\()" > /dev/null; then
-                    echo -e "${YELLOW}⚠️ PERINGATAN: Terdeteksi fungsi debug (dd/var_dump/print_r) baru di: ${file}${NC}"
-                fi
-            fi
-            # Cek debugger; pada file JS/TS
-            if [[ "$file" =~ \.(js|ts)$ ]]; then
-                if git diff --cached "$file" | grep -E "^\+[[:space:]]*debugger;" > /dev/null; then
-                    echo -e "${RED}❌ ERROR: Terdeteksi 'debugger;' di file JavaScript/TypeScript: ${file}${NC}"
-                    exit 1
-                fi
-            fi
-            # Cek breakpoint() atau pdb pada file Python
-            if [[ "$file" =~ \.py$ ]]; then
-                if git diff --cached "$file" | grep -E "^\+[[:space:]]*(breakpoint\(|import pdb|pdb\.set_trace\()" > /dev/null; then
-                    echo -e "${RED}❌ ERROR: Terdeteksi debug breakpoint (breakpoint()/pdb) di file Python: ${file}${NC}"
-                    exit 1
-                fi
+    while IFS= read -r file; do
+        [ -z "$file" ] && continue
+        [ ! -f "$file" ] && continue
+
+        ADDED_DIFF=$(git diff --cached -U0 -- "$file" | grep -E "^\+[^+]" || true)
+        [ -z "$ADDED_DIFF" ] && continue
+
+        # 4a. Debug statements
+        if [[ "$file" =~ \.php$ ]]; then
+            if echo "$ADDED_DIFF" | grep -E "^\+[[:space:]]*(dd\(|var_dump\(|print_r\()" > /dev/null; then
+                echo -e "${RED}❌ ERROR: Terdeteksi fungsi debug (dd/var_dump/print_r) baru di: ${file}${NC}"
+                exit 1
             fi
         fi
-    done
+
+        if [[ "$file" =~ \.(js|jsx|ts|tsx)$ ]]; then
+            if echo "$ADDED_DIFF" | grep -E "^\+[[:space:]]*debugger;?" > /dev/null; then
+                echo -e "${RED}❌ ERROR: Terdeteksi 'debugger;' di file JavaScript/TypeScript: ${file}${NC}"
+                exit 1
+            fi
+        fi
+
+        if [[ "$file" =~ \.py$ ]]; then
+            if echo "$ADDED_DIFF" | grep -E "^\+[[:space:]]*(breakpoint\(|import pdb|pdb\.set_trace\()" > /dev/null; then
+                echo -e "${RED}❌ ERROR: Terdeteksi debug breakpoint (breakpoint()/pdb) di file Python: ${file}${NC}"
+                exit 1
+            fi
+        fi
+
+        # 4b. Unfinished AI placeholders (lewati file test/spec)
+        if ! [[ "$file" =~ (^|/)(test|tests|__tests__|spec)/|_test\.(go|dart|py)$|\.(test|spec)\.(js|jsx|ts|tsx)$ ]]; then
+            if echo "$ADDED_DIFF" | grep -E "TODO:[[:space:]]*implement|FIXME:[[:space:]]*dummy|throw[[:space:]]+UnimplementedError|raise[[:space:]]+NotImplementedError" > /dev/null; then
+                echo -e "${RED}❌ ERROR [Anti-Slop]: Terdeteksi placeholder/stub belum selesai di: ${file}${NC}"
+                echo -e "${YELLOW}Selesaikan implementasinya sebelum commit (hindari TODO: implement / UnimplementedError / dummy).${NC}"
+                exit 1
+            fi
+        fi
+    done <<< "$STAGED_CODE_FILES"
+fi
+
+# ==============================================================================
+# 5. Stack-Aware Static Analysis (Staged Files Only — Otomatis jika tool ada)
+# ==============================================================================
+if [ "${SKIP_STATIC_CHECK:-0}" != "1" ] && [ -n "$STAGED_CODE_FILES" ]; then
+    # PHP: syntax check wajib + PHPStan jika terkonfigurasi
+    PHP_FILES=$(echo "$STAGED_CODE_FILES" | grep -E "\.php$" || true)
+    if [ -n "$PHP_FILES" ] && command -v php > /dev/null 2>&1; then
+        echo -e "${BLUE}🔎 Menjalankan php -l pada staged PHP files...${NC}"
+        while IFS= read -r f; do
+            [ -f "$f" ] && php -l "$f" > /dev/null
+        done <<< "$PHP_FILES"
+        if [ -x "./vendor/bin/phpstan" ] && { [ -f "phpstan.neon" ] || [ -f "phpstan.neon.dist" ]; }; then
+            echo -e "${BLUE}🔎 Menjalankan PHPStan pada staged PHP files...${NC}"
+            # shellcheck disable=SC2086
+            ./vendor/bin/phpstan analyse --no-progress $PHP_FILES
+        fi
+    fi
+
+    # Dart / Flutter: dart analyze pada staged .dart files
+    DART_FILES=$(echo "$STAGED_CODE_FILES" | grep -E "\.dart$" || true)
+    if [ -n "$DART_FILES" ] && command -v dart > /dev/null 2>&1; then
+        echo -e "${BLUE}🔎 Menjalankan dart analyze pada staged Dart files...${NC}"
+        # shellcheck disable=SC2086
+        dart analyze --fatal-infos=false $DART_FILES
+    fi
+
+    # TypeScript / JavaScript: tsc --noEmit & eslint jika lokal terpasang
+    JS_TS_FILES=$(echo "$STAGED_CODE_FILES" | grep -E "\.(js|jsx|ts|tsx)$" || true)
+    if [ -n "$JS_TS_FILES" ]; then
+        if [ -f "tsconfig.json" ] && [ -x "./node_modules/.bin/tsc" ]; then
+            echo -e "${BLUE}🔎 Menjalankan TypeScript type-check (tsc --noEmit)...${NC}"
+            ./node_modules/.bin/tsc --noEmit
+        fi
+        if [ -x "./node_modules/.bin/eslint" ]; then
+            echo -e "${BLUE}🔎 Menjalankan ESLint pada staged JS/TS files...${NC}"
+            # shellcheck disable=SC2086
+            ./node_modules/.bin/eslint $JS_TS_FILES
+        fi
+    fi
+
+    # Python: ruff check pada staged .py files
+    PY_FILES=$(echo "$STAGED_CODE_FILES" | grep -E "\.py$" || true)
+    if [ -n "$PY_FILES" ] && command -v ruff > /dev/null 2>&1; then
+        echo -e "${BLUE}🔎 Menjalankan ruff check pada staged Python files...${NC}"
+        # shellcheck disable=SC2086
+        ruff check $PY_FILES
+    fi
+
+    # Go: go vet pada package yang berubah
+    GO_FILES=$(echo "$STAGED_CODE_FILES" | grep -E "\.go$" || true)
+    if [ -n "$GO_FILES" ] && [ -f "go.mod" ] && command -v go > /dev/null 2>&1; then
+        GO_PKGS=$(echo "$GO_FILES" | xargs -I{} dirname "{}" | sort -u | sed 's|^\.$|.|; s|^\([^.]\)|./\1|')
+        echo -e "${BLUE}🔎 Menjalankan go vet pada package yang berubah...${NC}"
+        # shellcheck disable=SC2086
+        go vet $GO_PKGS
+    fi
 fi
 
 echo -e "${GREEN}✅ [agent-blueprint] Pre-commit validation passed.${NC}"

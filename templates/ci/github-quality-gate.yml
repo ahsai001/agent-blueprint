@@ -1,0 +1,191 @@
+# GitHub Actions: Universal Anti-Slop & Quality Gate
+# Salin file ini ke: .github/workflows/quality-gate.yml
+# Otomatis mendeteksi stack proyek dan menjalankan static analysis, lint, & test.
+
+name: Quality Gate (Anti-Slop)
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: quality-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    name: Detect Stack & Diff Hygiene
+    runs-on: ubuntu-latest
+    outputs:
+      flutter: ${{ steps.stack.outputs.flutter }}
+      nodejs: ${{ steps.stack.outputs.nodejs }}
+      php: ${{ steps.stack.outputs.php }}
+      python: ${{ steps.stack.outputs.python }}
+      go: ${{ steps.stack.outputs.go }}
+      dotnet: ${{ steps.stack.outputs.dotnet }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect project stack
+        id: stack
+        run: |
+          echo "flutter=$([ -f pubspec.yaml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "nodejs=$([ -f package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "php=$( ([ -f composer.json ] || [ -f artisan ] || [ -d application/config ]) && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "python=$( ([ -f pyproject.toml ] || [ -f requirements.txt ]) && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "go=$([ -f go.mod ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "dotnet=$( (compgen -G '*.sln' > /dev/null || compgen -G '*.csproj' > /dev/null) && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: PR Anti-Slop Diff Check
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          if git diff "$BASE_SHA..$HEAD_SHA" | grep -E "BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY" > /dev/null; then
+            echo "❌ ERROR: Private key terdeteksi dalam PR diff!"
+            exit 1
+          fi
+
+          CHANGED_CODE=$(git diff --name-only --diff-filter=ACM "$BASE_SHA..$HEAD_SHA" | grep -E "\.(php|js|jsx|ts|tsx|dart|cs|py|go)$" || true)
+          if [ -n "$CHANGED_CODE" ]; then
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              ADDED=$(git diff -U0 "$BASE_SHA..$HEAD_SHA" -- "$file" | grep -E "^\+[^+]" || true)
+              [ -z "$ADDED" ] && continue
+
+              if ! [[ "$file" =~ (^|/)(test|tests|__tests__|spec)/|_test\.(go|dart|py)$|\.(test|spec)\.(js|jsx|ts|tsx)$ ]]; then
+                if echo "$ADDED" | grep -E "TODO:[[:space:]]*implement|FIXME:[[:space:]]*dummy|throw[[:space:]]+UnimplementedError|raise[[:space:]]+NotImplementedError" > /dev/null; then
+                  echo "❌ ERROR [Anti-Slop]: Placeholder belum selesai ditemukan di $file"
+                  exit 1
+                fi
+              fi
+
+              if [[ "$file" =~ \.php$ ]] && echo "$ADDED" | grep -E "^\+[[:space:]]*(dd\(|var_dump\(|print_r\()" > /dev/null; then
+                echo "❌ ERROR: Fungsi debug PHP (dd/var_dump/print_r) ditemukan di $file"
+                exit 1
+              fi
+              if [[ "$file" =~ \.(js|jsx|ts|tsx)$ ]] && echo "$ADDED" | grep -E "^\+[[:space:]]*debugger;?" > /dev/null; then
+                echo "❌ ERROR: Statement 'debugger;' ditemukan di $file"
+                exit 1
+              fi
+              if [[ "$file" =~ \.py$ ]] && echo "$ADDED" | grep -E "^\+[[:space:]]*(breakpoint\(|import pdb|pdb\.set_trace\()" > /dev/null; then
+                echo "❌ ERROR: Debug breakpoint Python ditemukan di $file"
+                exit 1
+              fi
+            done <<< "$CHANGED_CODE"
+          fi
+          echo "✅ PR Anti-Slop Diff Check passed."
+
+  flutter:
+    needs: detect
+    if: needs.detect.outputs.flutter == 'true'
+    name: Flutter / Dart Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart analyze --fatal-infos=false
+      - name: Run Flutter tests
+        if: hashFiles('test/**') != ''
+        run: flutter test
+
+  nodejs:
+    needs: detect
+    if: needs.detect.outputs.nodejs == 'true'
+    name: Node.js / TypeScript Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci || npm install
+      - name: TypeScript type-check
+        if: hashFiles('tsconfig.json') != ''
+        run: npx tsc --noEmit
+      - run: npm run lint --if-present
+      - run: npm test --if-present
+
+  php:
+    needs: detect
+    if: needs.detect.outputs.php == 'true'
+    name: PHP (Laravel / CodeIgniter) Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+      - name: Install Composer dependencies
+        if: hashFiles('composer.json') != ''
+        run: composer install --no-interaction --prefer-dist
+      - name: PHP syntax check
+        run: find . -path ./vendor -prune -o -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: PHPStan static analysis
+        if: hashFiles('phpstan.neon', 'phpstan.neon.dist') != ''
+        run: ./vendor/bin/phpstan analyse --no-progress
+      - name: Run PHP tests
+        run: |
+          if [ -f artisan ]; then
+            php artisan test
+          elif [ -x ./vendor/bin/phpunit ]; then
+            ./vendor/bin/phpunit
+          fi
+
+  python:
+    needs: detect
+    if: needs.detect.outputs.python == 'true'
+    name: Python Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip ruff pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e ".[dev]" || pip install -e . || true; fi
+      - run: ruff check .
+      - name: Run pytest
+        if: hashFiles('tests/**', 'test/**') != ''
+        run: pytest
+
+  go:
+    needs: detect
+    if: needs.detect.outputs.go == 'true'
+    name: Go Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  dotnet:
+    needs: detect
+    if: needs.detect.outputs.dotnet == 'true'
+    name: .NET / C# Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet restore
+      - run: dotnet build --no-restore
+      - run: dotnet test --no-build

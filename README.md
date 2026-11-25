@@ -131,9 +131,10 @@ Sistem ini dirancang dengan prinsip **Hybrid (Script + AI Agent)**:
 4. **Security & Injection Guardrail**: Wajib prepared statements / parameterized queries, strict boundary validation di controller/DTO, dan dilarang mengekspos raw database error/stack trace ke client.
 5. **SOP Inspect Definition First**: Agent dilarang berasumsi nama parameter helper; wajib membaca file definisi helper (`view_file`) sebelum menulis kode pemanggilannya.
 6. **Scope Lock**: Dilarang me-reformat seluruh repo atau mengubah file di luar tiket yang ditugaskan.
-7. **Git Pre-commit Hook**: Otomatis menggagalkan commit jika ada file `.env`, private key SSH, atau fungsi debug tertinggal (`dd()`, `debugger;`).
-8. **On-Demand Security Audit Playbook**: Tersedia SOP audit keamanan lengkap di `prompts/SECURITY_AUDIT.md` untuk pentest mandiri sebelum rilis.
+7. **Git Pre-commit Quality Gate**: Otomatis menggagalkan commit jika ada file `.env`, private key SSH, fungsi debug tertinggal (`dd()`, `var_dump()`, `debugger;`, `breakpoint()`), placeholder belum selesai (`TODO: implement`, `UnimplementedError`), diff terlalu besar (*Anti-Bloat Guard*: >15 file atau +500 baris), serta otomatis menjalankan static analysis pada staged files (`php -l`/PHPStan, `dart analyze`, `tsc`/ESLint, `ruff`, `go vet`) bila tool tersedia.
+8. **On-Demand Audit Playbooks**: Tersedia SOP audit keamanan di `prompts/SECURITY_AUDIT.md` dan SOP independent review anti-slop di `prompts/SLOP_AUDIT.md` untuk menyaring *over-engineering* & kode redundan sebelum merge/PR.
 9. **Systematic Debugging & Verification Before Completion**: Agent wajib mencari *root cause* sebelum memperbaiki bug (berhenti & evaluasi ulang jika 2–3 percobaan gagal) serta wajib menunjukkan bukti output verifikasi nyata (`test`/`build`/`lint`) setelah perubahan terakhir sebelum menyatakan tugas selesai.
+10. **Template CI Quality Gate**: Tersedia workflow GitHub Actions siap pakai di `templates/ci/github-quality-gate.yml` (salin ke `.github/workflows/quality-gate.yml`) yang otomatis mendeteksi stack proyek dan menegakkan PR Anti-Slop Diff Check, static analysis, lint, serta test di CI.
 
 ---
 
